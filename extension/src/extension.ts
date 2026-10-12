@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import {
-  bar, description, groupByRepo, isInWorkspace, isRow, isStale, planOf, rowForWorkspace, statusText, stepsOf,
+  bar, description, groupByRepo, isInWorkspace, isRow, isStale, planOf, rowForTab, rowForWorkspace, statusText, stepsOf,
   visibleRows, type Group, type Row, type Step,
 } from "./rows";
 
@@ -50,9 +50,10 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
   rows: Row[] = [];
+  /** The session whose tab last had focus in this window; sticky while a file has focus. */
+  focusedId: string | undefined;
 
-  refresh() {
-    this.rows = readRows();
+  fire() {
     this.changed.fire();
   }
 
@@ -80,12 +81,12 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
     }
     const r = node.row;
     const stale = isStale(r, now);
-    const mine = isInWorkspace(r, folders());
+    const focused = r.id === this.focusedId;
     const hasSteps = stepsOf(r).length > 0;
     const item = new vscode.TreeItem(
       planOf(r),
       hasSteps
-        ? mine && !stale ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed
+        ? focused && !stale ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None,
     );
     item.id = `session:${r.id}`;
@@ -94,15 +95,15 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
       ? new vscode.ThemeIcon("debug-pause", new vscode.ThemeColor("disabledForeground"))
       : r.total > 0 && r.done === r.total
         ? new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed"))
-        : new vscode.ThemeIcon(mine ? "compass-active" : "compass", mine ? new vscode.ThemeColor("charts.blue") : undefined);
-    item.tooltip = tooltip(r, now, mine);
+        : new vscode.ThemeIcon(focused ? "compass-active" : "compass", focused ? new vscode.ThemeColor("charts.blue") : undefined);
+    item.tooltip = tooltip(r, now, focused ? "this tab" : isInWorkspace(r, folders()) ? "this window" : "");
     return item;
   }
 }
 
-function tooltip(r: Row, now: number, mine: boolean) {
+function tooltip(r: Row, now: number, scope: string) {
   const md = new vscode.MarkdownString(undefined, true);
-  md.appendMarkdown(`**${planOf(r)}**${mine ? " · this window" : ""}\n\n`);
+  md.appendMarkdown(`**${planOf(r)}**${scope ? ` · ${scope}` : ""}\n\n`);
   if (r.total > 0) md.appendMarkdown(`\`${bar(r.done, r.total)}\` ${r.done}/${r.total}\n\n`);
   if (r.now) md.appendMarkdown(`Now: ${r.now}\n\n`);
   const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
@@ -121,14 +122,19 @@ export function activate(context: vscode.ExtensionContext) {
   status.command = `${VIEW}.focus`;
 
   const update = () => {
-    tree.refresh();
+    tree.rows = readRows();
     const now = Date.now();
+    // A Claude tab's label is the title the mod set, which its row records
+    const tab = rowForTab(tree.rows, vscode.window.tabGroups.activeTabGroup.activeTab?.label ?? "", now);
+    if (tab) tree.focusedId = tab.id;
+    const focused = visibleRows(tree.rows, now).find((r) => r.id === tree.focusedId);
+    const shown = focused ?? rowForWorkspace(tree.rows, folders(), now);
+    tree.fire();
     const live = visibleRows(tree.rows, now).filter((r) => !isStale(r, now));
     view.badge = live.length > 0 ? { value: live.length, tooltip: `${live.length} live sessions` } : undefined;
-    const mine = rowForWorkspace(tree.rows, folders(), now);
-    if (mine) {
-      status.text = `$(compass) ${statusText(mine)}`;
-      status.tooltip = tooltip(mine, now, true);
+    if (shown) {
+      status.text = `$(compass) ${statusText(shown)}`;
+      status.tooltip = tooltip(shown, now, focused ? "this tab" : "this window");
       status.show();
     } else {
       status.hide();
@@ -165,6 +171,9 @@ export function activate(context: vscode.ExtensionContext) {
     status,
     vscode.commands.registerCommand("sessionCompass.refresh", update),
     vscode.workspace.onDidChangeWorkspaceFolders(update),
+    // Fires on focus moves and on label changes, so a retitled tab is picked up too
+    vscode.window.tabGroups.onDidChangeTabs(update),
+    vscode.window.tabGroups.onDidChangeTabGroups(update),
     { dispose: () => { clearInterval(tick); clearTimeout(timer); watcher?.close(); } },
   );
   update();

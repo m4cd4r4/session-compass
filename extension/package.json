@@ -2,7 +2,7 @@
   "name": "session-compass",
   "displayName": "Session Compass",
   "description": "Where each parallel Claude Code session is: plan, stage, current step, branch.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "macdara",
   "private": true,
   "license": "MIT",

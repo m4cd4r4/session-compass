@@ -17,6 +17,8 @@ export type Row = {
   steps?: Step[];
   branch?: string;
   cwd?: string;
+  /** The tab title the mod last set; the active tab's label is matched to it. */
+  title?: string;
 };
 
 export const STALE_MS = 6 * 60 * 60 * 1000;
@@ -96,7 +98,14 @@ export const rowForWorkspace = (rows: readonly Row[], folders: readonly string[]
   return live.find((r) => !r.cwd && r.repo && names.includes(r.repo.toLowerCase()));
 };
 
-export const isInWorkspace = (r: Row, folders: readonly string[]) =>
+/** The row whose recorded title is this tab's label; newest wins when two sessions share a title. */
+export const rowForTab = (rows: readonly Row[], label: string, nowMs: number): Row | undefined => {
+  const l = label.trim();
+  if (!l) return undefined;
+  return visibleRows(rows, nowMs).find((r) => r.title && r.title.trim() === l);
+};
+
+export const isInWorkspace =(r: Row, folders: readonly string[]) =>
   !!r.cwd && folders.some((f) => inside(r.cwd!, f));
 
 /** Status bar text for this window's session. */

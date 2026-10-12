@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  GONE_MS, STALE_MS, bar, description, groupByRepo, isRow, rowForWorkspace, statusText, stepsOf, visibleRows,
+  GONE_MS, STALE_MS, bar, description, groupByRepo, isRow, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
   type Row,
 } from "../src/rows.ts";
 
@@ -56,6 +56,19 @@ test("rowForWorkspace matches cwd inside a folder, any slash or case", () => {
 test("rowForWorkspace falls back to repo name for rows without cwd, never to a stale row", () => {
   assert.equal(rowForWorkspace([row({ id: "a", repo: "solaisoft" })], ["I:/Scratch/solaisoft"], NOW)?.id, "a");
   assert.equal(rowForWorkspace([row({ repo: "solaisoft", updatedAt: NOW - STALE_MS })], ["I:/Scratch/solaisoft"], NOW), undefined);
+});
+
+test("rowForTab matches the recorded title exactly, newest first, never an ended row", () => {
+  const rows = [
+    row({ id: "a", title: "2/5 Ship it · wt", updatedAt: NOW - 5000 }),
+    row({ id: "b", title: "2/5 Ship it · wt", updatedAt: NOW - 1000 }),
+    row({ id: "c", title: "1/3 Other", ended: true }),
+    row({ id: "d" }),
+  ];
+  assert.equal(rowForTab(rows, "2/5 Ship it · wt", NOW)?.id, "b");
+  assert.equal(rowForTab(rows, "1/3 Other", NOW), undefined);
+  assert.equal(rowForTab(rows, "2/5 Ship it", NOW), undefined);
+  assert.equal(rowForTab(rows, "", NOW), undefined);
 });
 
 test("statusText and bar", () => {
