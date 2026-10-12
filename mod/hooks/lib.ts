@@ -78,6 +78,10 @@ export const whereFromGit = (toplevel: string, commonDir: string) => {
 
 export const claudeDirOf = (path: string) => /^(.*?[\\/]\.claude)[\\/]/.exec(path)?.[1] ?? ''
 
+// A mod installed from its own repo has no .claude in its path: fall back to the config dir, then home
+export const claudeDir = (root: string, configDir?: string, home?: string) =>
+  configDir || claudeDirOf(root) || (home ? `${home}/.claude` : '')
+
 export type Row = {
   id: string
   repo: string

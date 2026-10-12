@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, STALE_MS, claudeDirOf, headingOf, newlyDone, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, STALE_MS, claudeDir, claudeDirOf,headingOf, newlyDone, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -53,6 +53,13 @@ test('headingOf and claudeDirOf', () => {
   expect(headingOf('intro\n# Session Compass\n## Context')).toBe('Session Compass')
   expect(claudeDirOf('C:/Users/me/.claude/dev-mods/x/session-compass')).toBe('C:/Users/me/.claude')
   expect(claudeDirOf('C:\\Users\\me\\.claude\\plugins\\cache\\x')).toBe('C:\\Users\\me\\.claude')
+})
+
+test('claudeDir: config dir, then the plugin path, then home', () => {
+  expect(claudeDir('I:/Scratch/session-compass/mod', 'D:/cfg', 'C:/Users/me')).toBe('D:/cfg')
+  expect(claudeDir('C:/Users/me/.claude/dev-mods/x/m', undefined, 'C:/Users/other')).toBe('C:/Users/me/.claude')
+  expect(claudeDir('I:/Scratch/session-compass/mod', undefined, 'C:/Users/me')).toBe('C:/Users/me/.claude')
+  expect(claudeDir('I:/Scratch/session-compass/mod')).toBe('')
 })
 
 test('sessionsReport: drops ended and stale rows, groups by repo, marks self', () => {

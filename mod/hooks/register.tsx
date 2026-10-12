@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Compass, Step, StepStatus } from '../types'
 import {
-  EMPTY, bar, claudeDirOf, detailText, headingOf, newlyDone, rowOf, sessionsReport,
+  EMPTY, bar, claudeDir, detailText, headingOf, newlyDone, rowOf, sessionsReport,
   stage, statusText, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
 import type { Row } from './lib'
@@ -43,8 +43,15 @@ async function save($: EngineInterface, change: (c: Compass) => Compass) {
   return after
 }
 
+async function rowsDir($: EngineInterface) {
+  const [configDir, home, profile] = await Promise.all([
+    $.env.get('CLAUDE_CONFIG_DIR'), $.env.get('HOME'), $.env.get('USERPROFILE'),
+  ])
+  return claudeDir($.plugin.root, configDir, home || profile)
+}
+
 async function writeRow($: EngineInterface, c: Compass, ended: boolean) {
-  const dir = claudeDirOf($.plugin.root)
+  const dir = await rowsDir($)
   if (!dir) return
   const id = await $.session.id()
   await $.fs.write(`${dir}/session-compass/${id}.json`, JSON.stringify(rowOf(id, c, ended))).catch(() => undefined)
@@ -153,7 +160,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'sessions' }, async $ => {
-    const dir = claudeDirOf($.plugin.root)
+    const dir = await rowsDir($)
     const self = await $.session.id()
     await writeRow($, await read($, compass), false)
     const files = await $.fs.list(`${dir}/session-compass`).catch(() => [])
