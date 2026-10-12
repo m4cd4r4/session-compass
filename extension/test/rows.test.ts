@@ -71,6 +71,18 @@ test("rowForTab matches the recorded title exactly, newest first, never an ended
   assert.equal(rowForTab(rows, "", NOW), undefined);
 });
 
+test("rowForTab: a label VS Code cut short with an ellipsis matches the title it starts", () => {
+  const rows = [
+    row({ id: "a", title: "2/5 Landing metric strip fixes", updatedAt: NOW - 5000 }),
+    row({ id: "b", title: "4/4 Session Compass claude.ai attach", updatedAt: NOW - 1000 }),
+    row({ id: "c", title: "4/4 Session Compass claude.ai other", updatedAt: NOW - 9000 }),
+  ];
+  assert.equal(rowForTab(rows, "2/5 Landing metric strip…", NOW)?.id, "a");
+  assert.equal(rowForTab(rows, "4/4 Session Compass clau…", NOW)?.id, "b");
+  assert.equal(rowForTab(rows, "2/5 Landing metric strip", NOW), undefined);
+  assert.equal(rowForTab(rows, "…", NOW), undefined);
+});
+
 test("statusText and bar", () => {
   assert.equal(statusText(row({ done: 2, total: 5, plan: "Ship it", now: "tests" })), "2/5 Ship it · tests");
   assert.equal(statusText(row({ plan: "" })), "(no plan yet)");
