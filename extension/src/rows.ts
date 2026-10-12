@@ -32,9 +32,15 @@ export const isRow = (v: unknown): v is Row => {
 
 export const isStale = (r: Row, nowMs: number) => nowMs - r.updatedAt >= STALE_MS;
 
-/** Live and recently idle rows: ended and day-old rows are dropped, newest first. */
+/**
+ * Live and recently idle rows, newest first. Dropped: ended, day-old, and sessions that never got a
+ * message or a plan (the mod's plan falls back to the first message, so an empty plan with no steps
+ * is a window that was opened and left).
+ */
 export const visibleRows = (rows: readonly Row[], nowMs: number) =>
-  rows.filter((r) => !r.ended && nowMs - r.updatedAt < GONE_MS).sort((a, b) => b.updatedAt - a.updatedAt);
+  rows
+    .filter((r) => !r.ended && nowMs - r.updatedAt < GONE_MS && (r.plan || r.total > 0))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 
 export type Group = { repo: string; rows: Row[] };
 

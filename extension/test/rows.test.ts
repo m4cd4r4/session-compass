@@ -20,6 +20,15 @@ test("visibleRows drops ended and day-old rows, keeps idle ones, newest first", 
   assert.deepEqual(visibleRows(rows, NOW).map((r) => r.id), ["live", "idle"]);
 });
 
+test("visibleRows hides a session that never got a message or a plan", () => {
+  const rows = [
+    row({ id: "empty", plan: "" }),
+    row({ id: "steps", plan: "", total: 3 }),
+    row({ id: "topic", plan: "Fix the login bug" }),
+  ];
+  assert.deepEqual(visibleRows(rows, NOW).map((r) => r.id), ["steps", "topic"]);
+});
+
 test("groupByRepo orders groups by their newest row", () => {
   const groups = groupByRepo([
     row({ id: "a1", repo: "a", updatedAt: NOW - 5000 }),
