@@ -98,11 +98,19 @@ export const rowForWorkspace = (rows: readonly Row[], folders: readonly string[]
   return live.find((r) => !r.cwd && r.repo && names.includes(r.repo.toLowerCase()));
 };
 
-/** The row whose recorded title is this tab's label; newest wins when two sessions share a title. */
+/**
+ * The row whose recorded title is this tab's label; newest wins when two sessions share a title.
+ * VS Code cuts a long tab label to ~24 characters plus "…", so a cut label matches the title it starts.
+ */
 export const rowForTab = (rows: readonly Row[], label: string, nowMs: number): Row | undefined => {
   const l = label.trim();
-  if (!l) return undefined;
-  return visibleRows(rows, nowMs).find((r) => r.title && r.title.trim() === l);
+  const cutAt = l.endsWith("…") ? l.slice(0, -1).trimEnd() : undefined;
+  if (!l || cutAt === "") return undefined;
+  return visibleRows(rows, nowMs).find((r) => {
+    const t = r.title?.trim();
+    if (!t) return false;
+    return cutAt === undefined ? t === l : t === l || t.startsWith(cutAt);
+  });
 };
 
 export const isInWorkspace =(r: Row, folders: readonly string[]) =>
