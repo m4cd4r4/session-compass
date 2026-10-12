@@ -1,0 +1,201 @@
+import { atom, read, update } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
+
+import type { Compass, Step, StepStatus } from '../types'
+import {
+  EMPTY, bar, claudeDirOf, detailText, headingOf, newlyDone, rowOf, sessionsReport,
+  stage, statusText, title, topicOf, whereFromGit, whereLabel,
+} from './lib'
+import type { Row } from './lib'
+
+const PLUGIN = 'session-compass'
+const PANE = 'compass'
+const PLAN_FILE = /[\\/]\.claude[\\/]plans[\\/][^\\/]+\.md$/i
+const GIT_MOVE = /\bgit\s+(checkout|switch|worktree)\b|\bcd\s/
+
+const compass = atom({ plugin: 'session-compass', key: 'compass' } as const, EMPTY)
+const isHidden = atom({ plugin: 'session-compass', key: 'isHidden' } as const, false)
+
+const GUIDE = [
+  'Session compass: the person runs many sessions in parallel and orients by a panel fed by the `compass` tool.',
+  'Call it (one call, no narration about it) when you start a task of 3+ steps, when a step starts or finishes, and when the plan changes.',
+  'Give `plan` as a 3-6 word name of the feature or job, and `steps` as the whole list each time, each step under 8 words.',
+  'Skip it for one-shot questions.',
+].join(' ')
+
+async function git($: EngineInterface, args: string[]) {
+  const cwd = await $.session.root()
+  const r = await $.process.run(['git', ...args], { cwd, timeoutMs: 5000 }).catch(() => undefined)
+  return r && r.exitCode === 0 ? r.stdout.trim() : ''
+}
+
+// Everything that writes state goes through here: title source, pane, status, shared file
+async function save($: EngineInterface, change: (c: Compass) => Compass) {
+  const before = await read($, compass)
+  const after = { ...change(before), updatedAt: await $.clock.now() }
+  await update($, compass, () => after)
+  $.ui.status(statusText(after))
+  const { total } = stage(after.steps)
+  for (const s of newlyDone(before.steps, after.steps)) {
+    $.ui.toast(`Done ${stage(after.steps).done}/${total}: ${s.text}`)
+  }
+  await writeRow($, after, false)
+  return after
+}
+
+async function writeRow($: EngineInterface, c: Compass, ended: boolean) {
+  const dir = claudeDirOf($.plugin.root)
+  if (!dir) return
+  const id = await $.session.id()
+  await $.fs.write(`${dir}/session-compass/${id}.json`, JSON.stringify(rowOf(id, c, ended))).catch(() => undefined)
+}
+
+async function refreshWhere($: EngineInterface) {
+  const [top, common, branch] = await Promise.all([
+    git($, ['rev-parse', '--show-toplevel']),
+    git($, ['rev-parse', '--path-format=absolute', '--git-common-dir']),
+    git($, ['rev-parse', '--abbrev-ref', 'HEAD']),
+  ])
+  const cwd: string = await $.session.root()
+  const where = top ? whereFromGit(top, common || `${top}/.git`) : whereFromGit(cwd, '')
+  const now = await read($, compass)
+  if (now.repo === where.repo && now.slug === where.slug && now.branch === branch) return now
+  return save($, c => ({ ...c, ...where, branch }))
+}
+
+async function openPane($: EngineInterface) {
+  if (await read($, isHidden)) return
+  const panes = await $.ui.panes().catch(() => [])
+  if (!panes.some((p: { id: string }) => p.id === PANE)) await $.ui.open({ id: PANE, title: 'Compass' })
+}
+
+export const register: Register = on => {
+  on('session.start', async ($, e, next) => {
+    await $.tool.register({
+      name: 'compass',
+      description:
+        'Report where this session is so the person can orient across parallel sessions. ' +
+        'Send the plan name and the WHOLE step list each call; status is done, now or todo (at most one now).',
+      isDeferred: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          plan: { type: 'string', description: '3-6 word name of the feature or job' },
+          steps: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' },
+                status: { type: 'string', enum: ['done', 'now', 'todo'] },
+              },
+              required: ['text', 'status'],
+            },
+          },
+        },
+      },
+    })
+    await $.command.register({ name: 'sessions', description: 'List every live Claude session: repo, branch, plan, stage, now' })
+    await $.command.register({ name: 'compass', description: 'Print the plan, stage, done, now and todo of this session' })
+    await refreshWhere($)
+    await openPane($)
+    return next(e)
+  })
+
+  on('prompt.compose', async ($, e, next) => {
+    const r = await next(e)
+    return { sections: [...r.sections, { id: `${PLUGIN}:guide`, text: GUIDE, scope: 'session' as const }] }
+  })
+
+  on('classic.UserPromptSubmit', async ($, e, next) => {
+    const r = await next(e)
+    const topic = topicOf(e.prompt ?? '')
+    let c = await refreshWhere($)
+    if (topic && !c.topic) c = await save($, x => ({ ...x, topic }))
+    await openPane($)
+    return { ...r, sessionTitle: title(c) || undefined }
+  }).catch(($, e, next) => next(e))
+
+  // The cast: the generated tool types list MCP servers' tools, not this mod's own
+  on('tool.call', { tool: 'mcp__session-compass__compass' as 'Bash' }, async ($, e: any) => {
+    const input = (e.input ?? e) as { plan?: unknown; steps?: unknown }
+    const steps: Step[] = Array.isArray(input.steps)
+      ? input.steps
+          .filter((s: any) => s && typeof s.text === 'string')
+          .map((s: any) => ({
+            text: String(s.text).slice(0, 120),
+            status: (['done', 'now', 'todo'].includes(s.status) ? s.status : 'todo') as StepStatus,
+          }))
+      : []
+    const c = await save($, x => ({
+      ...x,
+      plan: typeof input.plan === 'string' && input.plan.trim() ? input.plan.trim().slice(0, 80) : x.plan,
+      steps: Array.isArray(input.steps) ? steps : x.steps,
+    }))
+    const { done, total } = stage(c.steps)
+    return { result: `Compass updated: ${c.plan || '(no plan)'} ${done}/${total}` }
+  }).catch(() => ({ result: 'Compass update failed; carry on.' }))
+
+  // A plan written in plan mode names the plan, unless the model already did
+  on('tool.call', { tool: 'Write' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (!ran.isError && !ran.deny && PLAN_FILE.test(e.file_path)) {
+      const heading = headingOf(e.content)
+      if (heading) await save($, c => (c.plan ? c : { ...c, plan: heading }))
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (GIT_MOVE.test(e.command)) await refreshWhere($)
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('command.run', { command: 'sessions' }, async $ => {
+    const dir = claudeDirOf($.plugin.root)
+    const self = await $.session.id()
+    await writeRow($, await read($, compass), false)
+    const files = await $.fs.list(`${dir}/session-compass`).catch(() => [])
+    const rows: Row[] = []
+    for (const f of files) {
+      if (!f.name.endsWith('.json')) continue
+      const text = await $.fs.read(`${dir}/session-compass/${f.name}`).catch(() => '')
+      try { rows.push(JSON.parse(text as string)) } catch { /* half-written file */ }
+    }
+    return { text: sessionsReport(rows, self, await $.clock.now()) }
+  })
+
+  // The Pane does not draw in the VS Code panel, so the detail is printed on demand
+  on('command.run', { command: 'compass' }, async $ => {
+    await openPane($)
+    return { text: detailText(await read($, compass)) }
+  })
+
+  on('session.end', async ($, e, next) => {
+    await writeRow($, await read($, compass), true)
+    return next(e)
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    const c = await read($, compass)
+    const { done, total, now } = stage(c.steps)
+    const doneSteps = c.steps.filter(s => s.status === 'done')
+    const todo = c.steps.filter(s => s.status === 'todo')
+    const where = [c.repo || '?', whereLabel(c) || c.branch].filter(Boolean).join(' · ')
+
+    return (
+      <Box flexDirection="column">
+        <Text bold>{where}</Text>
+        <Text>{c.plan || c.topic || 'No plan reported yet'}</Text>
+        {total > 0 && <Text>{bar(done, total)} {done}/{total}</Text>}
+        {now && <Text>▶ Now: {now}</Text>}
+        {doneSteps.length > 3 && <Text dimColor>✓ {doneSteps.length - 3} earlier done</Text>}
+        {doneSteps.slice(-3).map(s => <Text dimColor>✓ {s.text}</Text>)}
+        {todo.slice(0, 5).map(s => <Text>○ {s.text}</Text>)}
+        {todo.length > 5 && <Text dimColor>+{todo.length - 5} more</Text>}
+      </Box>
+    )
+  })
+}

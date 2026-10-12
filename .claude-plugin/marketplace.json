@@ -1,0 +1,16 @@
+{
+  "name": "session-compass",
+  "owner": { "name": "Macdara Ó Murchú" },
+  "metadata": {
+    "description": "Shows where each parallel Claude Code session is: repo, branch, plan, stage.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "session-compass",
+      "source": "./mod",
+      "description": "Tab title, compass tool and /sessions list showing where each session is: repo, branch, plan, stage, now, done, todo.",
+      "category": "workflow"
+    }
+  ]
+}
