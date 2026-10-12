@@ -15,8 +15,6 @@ const GIT_MOVE = /\bgit\s+(checkout|switch|worktree)\b|\bcd\s/
 
 const compass = atom({ plugin: 'session-compass', key: 'compass' } as const, EMPTY)
 const isHidden = atom({ plugin: 'session-compass', key: 'isHidden' } as const, false)
-// Debug: each remote client that joined this session's roster, newest last
-const attaches = atom({ plugin: 'session-compass', key: 'attaches' } as const, [] as string[])
 
 const GUIDE = [
   'Session compass: the person runs many sessions in parallel and orients by a panel fed by the `compass` tool.',
@@ -78,31 +76,6 @@ async function openPane($: EngineInterface) {
   if (!panes.some((p: { id: string }) => p.id === PANE)) await $.ui.open({ id: PANE, title: 'Compass' })
 }
 
-// Debug line for /compass: which surfaces are attached, and whether each says it drew the Pane
-async function surfacesDebug($: EngineInterface) {
-  const surfaces = await $.session.surfaces().catch(err => [`error: ${err}`])
-  const opened = await $.ui.open({ id: PANE, title: 'Compass' }).catch(err => ({ error: String(err) }))
-  const panes = await $.ui.panes().catch(() => [])
-  const pane = panes.find((p: { id: string }) => p.id === PANE)
-  return [
-    `debug surfaces=${JSON.stringify(surfaces)}`,
-    `open=${JSON.stringify(opened)}`,
-    `pane=${JSON.stringify(pane ?? null)}`,
-    `hidden=${await read($, isHidden)}`,
-    `attaches=${JSON.stringify(await read($, attaches))}`,
-  ].join(' ')
-}
-
-// Debug: claude.ai sends /compass to the model, not the mod, so the same line is logged per session to read off disk
-async function logDebug($: EngineInterface, event: string) {
-  const dir = await rowsDir($)
-  if (!dir) return
-  const path = `${dir}/session-compass/debug-${await $.session.id()}.log`
-  const before = await $.fs.read(path).catch(() => '')
-  const line = `${new Date().toISOString()} ${event} ${await surfacesDebug($)}\n`
-  await $.fs.write(path, `${before}${line}`).catch(() => undefined)
-}
-
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.tool.register({
@@ -133,7 +106,6 @@ export const register: Register = on => {
     await $.command.register({ name: 'compass', description: 'Print the plan, stage, done, now and todo of this session' })
     await refreshWhere($)
     await openPane($)
-    await logDebug($, 'start')
     return next(e)
   })
 
@@ -183,7 +155,6 @@ export const register: Register = on => {
       steps: Array.isArray(input.steps) ? steps : x.steps,
     }))
     const { done, total } = stage(c.steps)
-    await logDebug($, 'compass-tool')
     return { result: `Compass updated: ${c.plan || '(no plan)'} ${done}/${total}` }
   }).catch(() => ({ result: 'Compass update failed; carry on.' }))
 
@@ -220,14 +191,7 @@ export const register: Register = on => {
   // The Pane does not draw in the VS Code panel, so the detail is printed on demand
   on('command.run', { command: 'compass' }, async $ => {
     await openPane($)
-    return { text: `${detailText(await read($, compass))}\n${await surfacesDebug($)}` }
-  })
-
-  on('session.attach', async ($, e: any, next) => {
-    const r = await next(e)
-    await update($, attaches, a => [...a, `${e.surface ?? '?'}@${new Date().toISOString().slice(11, 19)}Z`].slice(-5))
-    await logDebug($, `attach ${JSON.stringify(e)}`)
-    return r
+    return { text: detailText(await read($, compass)) }
   })
 
   on('session.end', async ($, e, next) => {
