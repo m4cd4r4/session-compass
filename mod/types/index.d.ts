@@ -14,6 +14,6 @@ export type Compass = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'session-compass': { compass: Compass; isHidden: boolean }
+    'session-compass': { compass: Compass; isHidden: boolean; attaches: string[] }
   }
 }
