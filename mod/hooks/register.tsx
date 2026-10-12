@@ -15,6 +15,8 @@ const GIT_MOVE = /\bgit\s+(checkout|switch|worktree)\b|\bcd\s/
 
 const compass = atom({ plugin: 'session-compass', key: 'compass' } as const, EMPTY)
 const isHidden = atom({ plugin: 'session-compass', key: 'isHidden' } as const, false)
+// Debug: each remote client that joined this session's roster, newest last
+const attaches = atom({ plugin: 'session-compass', key: 'attaches' } as const, [] as string[])
 
 const GUIDE = [
   'Session compass: the person runs many sessions in parallel and orients by a panel fed by the `compass` tool.',
@@ -74,6 +76,21 @@ async function openPane($: EngineInterface) {
   if (await read($, isHidden)) return
   const panes = await $.ui.panes().catch(() => [])
   if (!panes.some((p: { id: string }) => p.id === PANE)) await $.ui.open({ id: PANE, title: 'Compass' })
+}
+
+// Debug line for /compass: which surfaces are attached, and whether each says it drew the Pane
+async function surfacesDebug($: EngineInterface) {
+  const surfaces = await $.session.surfaces().catch(err => [`error: ${err}`])
+  const opened = await $.ui.open({ id: PANE, title: 'Compass' }).catch(err => ({ error: String(err) }))
+  const panes = await $.ui.panes().catch(() => [])
+  const pane = panes.find((p: { id: string }) => p.id === PANE)
+  return [
+    `debug surfaces=${JSON.stringify(surfaces)}`,
+    `open=${JSON.stringify(opened)}`,
+    `pane=${JSON.stringify(pane ?? null)}`,
+    `hidden=${await read($, isHidden)}`,
+    `attaches=${JSON.stringify(await read($, attaches))}`,
+  ].join(' ')
 }
 
 export const register: Register = on => {
@@ -191,7 +208,13 @@ export const register: Register = on => {
   // The Pane does not draw in the VS Code panel, so the detail is printed on demand
   on('command.run', { command: 'compass' }, async $ => {
     await openPane($)
-    return { text: detailText(await read($, compass)) }
+    return { text: `${detailText(await read($, compass))}\n${await surfacesDebug($)}` }
+  })
+
+  on('session.attach', async ($, e: any, next) => {
+    const r = await next(e)
+    await update($, attaches, a => [...a, `${e.surface ?? '?'}@${new Date().toISOString().slice(11, 19)}Z`].slice(-5))
+    return r
   })
 
   on('session.end', async ($, e, next) => {
