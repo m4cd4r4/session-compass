@@ -86,6 +86,7 @@ test('title: repo stands in when there is no plan or topic', () => {
 
 test('rowOf: carries steps, branch and cwd for the sidebar', () => {
   const steps = [{ text: 'a', status: 'done' as const }, { text: 'b', status: 'now' as const }]
-  const row = rowOf('id1', { ...EMPTY, repo: 'r', branch: 'feat/x', plan: 'P', steps, updatedAt: 5 }, false, 'I:/r')
-  expect(row).toMatchObject({ id: 'id1', repo: 'r', plan: 'P', done: 1, total: 2, now: 'b', steps, branch: 'feat/x', cwd: 'I:/r' })
+  const row = rowOf('id1', { ...EMPTY, repo: 'r', branch: 'feat/x', plan: 'P', steps, updatedAt: 5, shownTitle: '1/2 P' }, false, 'I:/r')
+  expect(row).toMatchObject({ id: 'id1', repo: 'r', plan: 'P', done: 1, total: 2, now: 'b', steps, branch: 'feat/x', cwd: 'I:/r', title: '1/2 P' })
+  expect(rowOf('id2', EMPTY).title).toBe('')
 })

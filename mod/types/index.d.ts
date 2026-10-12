@@ -8,6 +8,8 @@ export type Compass = {
   topic: string
   steps: Step[]
   updatedAt: number
+  // The tab title last handed to the host; the sidebar matches the active tab's label to it
+  shownTitle?: string
 }
 
 declare module 'claude-code' {
