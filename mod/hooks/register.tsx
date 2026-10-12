@@ -93,6 +93,16 @@ async function surfacesDebug($: EngineInterface) {
   ].join(' ')
 }
 
+// Debug: claude.ai sends /compass to the model, not the mod, so the same line is logged per session to read off disk
+async function logDebug($: EngineInterface, event: string) {
+  const dir = await rowsDir($)
+  if (!dir) return
+  const path = `${dir}/session-compass/debug-${await $.session.id()}.log`
+  const before = await $.fs.read(path).catch(() => '')
+  const line = `${new Date().toISOString()} ${event} ${await surfacesDebug($)}\n`
+  await $.fs.write(path, `${before}${line}`).catch(() => undefined)
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.tool.register({
@@ -123,6 +133,7 @@ export const register: Register = on => {
     await $.command.register({ name: 'compass', description: 'Print the plan, stage, done, now and todo of this session' })
     await refreshWhere($)
     await openPane($)
+    await logDebug($, 'start')
     return next(e)
   })
 
@@ -172,6 +183,7 @@ export const register: Register = on => {
       steps: Array.isArray(input.steps) ? steps : x.steps,
     }))
     const { done, total } = stage(c.steps)
+    await logDebug($, 'compass-tool')
     return { result: `Compass updated: ${c.plan || '(no plan)'} ${done}/${total}` }
   }).catch(() => ({ result: 'Compass update failed; carry on.' }))
 
@@ -214,6 +226,7 @@ export const register: Register = on => {
   on('session.attach', async ($, e: any, next) => {
     const r = await next(e)
     await update($, attaches, a => [...a, `${e.surface ?? '?'}@${new Date().toISOString().slice(11, 19)}Z`].slice(-5))
+    await logDebug($, `attach ${JSON.stringify(e)}`)
     return r
   })
 
