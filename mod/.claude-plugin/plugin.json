@@ -1,6 +1,6 @@
 {
   "name": "session-compass",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tab title, pane and /sessions list showing where each session is: repo, branch, plan, stage, now, done, todo",
   "author": { "name": "Macdara" },
   "types": "./types/index.d.ts"

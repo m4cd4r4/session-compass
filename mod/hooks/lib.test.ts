@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, STALE_MS, claudeDir, claudeDirOf,headingOf, newlyDone, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, rowOf, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -82,4 +82,10 @@ test('sessionsReport: drops ended and stale rows, groups by repo, marks self', (
 
 test('title: repo stands in when there is no plan or topic', () => {
   expect(title({ ...EMPTY, repo: 'solaisoft', branch: 'main' })).toBe('solaisoft')
+})
+
+test('rowOf: carries steps, branch and cwd for the sidebar', () => {
+  const steps = [{ text: 'a', status: 'done' as const }, { text: 'b', status: 'now' as const }]
+  const row = rowOf('id1', { ...EMPTY, repo: 'r', branch: 'feat/x', plan: 'P', steps, updatedAt: 5 }, false, 'I:/r')
+  expect(row).toMatchObject({ id: 'id1', repo: 'r', plan: 'P', done: 1, total: 2, now: 'b', steps, branch: 'feat/x', cwd: 'I:/r' })
 })

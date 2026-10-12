@@ -92,13 +92,20 @@ export type Row = {
   now: string
   updatedAt: number
   ended?: boolean
+  // Read by the VS Code sidebar; rows written before 0.2.0 lack them
+  steps?: Step[]
+  branch?: string
+  cwd?: string
 }
 
 export const STALE_MS = 6 * 60 * 60 * 1000
 
-export const rowOf = (id: string, c: Compass, ended = false): Row => {
+export const rowOf = (id: string, c: Compass, ended = false, cwd = ''): Row => {
   const { done, total, now } = stage(c.steps)
-  return { id, repo: c.repo, where: whereLabel(c), plan: c.plan || c.topic, done, total, now, updatedAt: c.updatedAt, ended }
+  return {
+    id, repo: c.repo, where: whereLabel(c), plan: c.plan || c.topic, done, total, now, updatedAt: c.updatedAt, ended,
+    steps: c.steps, branch: c.branch, cwd,
+  }
 }
 
 export const sessionsReport = (rows: readonly Row[], selfId: string, nowMs: number) => {

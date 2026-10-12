@@ -54,7 +54,7 @@ async function writeRow($: EngineInterface, c: Compass, ended: boolean) {
   const dir = await rowsDir($)
   if (!dir) return
   const id = await $.session.id()
-  await $.fs.write(`${dir}/session-compass/${id}.json`, JSON.stringify(rowOf(id, c, ended))).catch(() => undefined)
+  await $.fs.write(`${dir}/session-compass/${id}.json`, JSON.stringify(rowOf(id, c, ended, await $.session.root()))).catch(() => undefined)
 }
 
 async function refreshWhere($: EngineInterface) {
