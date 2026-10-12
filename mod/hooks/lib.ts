@@ -82,6 +82,20 @@ export const claudeDirOf = (path: string) => /^(.*?[\\/]\.claude)[\\/]/.exec(pat
 export const claudeDir = (root: string, configDir?: string, home?: string) =>
   configDir || claudeDirOf(root) || (home ? `${home}/.claude` : '')
 
+export const NOTE_FILE = 'restart-note.md'
+
+/** What a fresh session is told about the restart note; empty when there is no note. */
+export const noteContext = (text: string, path: string) => {
+  const note = text.trim()
+  if (!note) return ''
+  return [
+    `Restart note (the person's reminder of where to start after restarting their sessions; file ${path}):`,
+    note,
+    'Tell the person this note in the first line of your first reply, before anything else.',
+    'Edit the file only when they ask: add a line when they say "add a restart note", remove a line when they say that item is done.',
+  ].join('\n')
+}
+
 export type Row = {
   id: string
   repo: string

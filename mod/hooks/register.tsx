@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Compass, Step, StepStatus } from '../types'
 import {
-  EMPTY, bar, claudeDir, detailText, headingOf, newlyDone, rowOf, sessionsReport,
+  EMPTY, NOTE_FILE, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, rowOf, sessionsReport,
   stage, statusText, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
 import type { Row } from './lib'
@@ -113,6 +113,19 @@ export const register: Register = on => {
     const r = await next(e)
     return { sections: [...r.sections, { id: `${PLUGIN}:guide`, text: GUIDE, scope: 'session' as const }] }
   })
+
+  // The restart note reaches a session started fresh, not one continued by /clear or a compact
+  on('classic.SessionStart', async ($, e, next) => {
+    const r = await next(e)
+    const source = (e as { source?: string }).source
+    if (source === 'clear' || source === 'compact') return r
+    const dir = await rowsDir($)
+    if (!dir) return r
+    const path = `${dir}/session-compass/${NOTE_FILE}`
+    const text = await $.fs.read(path).catch(() => '')
+    const context = noteContext(String(text ?? ''), path)
+    return context ? { ...r, additionalContext: [...(r.additionalContext ?? []), context] } : r
+  }).catch(($, e, next) => next(e))
 
   on('classic.UserPromptSubmit', async ($, e, next) => {
     const r = await next(e)

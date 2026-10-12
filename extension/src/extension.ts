@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import {
-  bar, description, groupByRepo, isInWorkspace, isRow, isStale, planOf, rowForTab, rowForWorkspace, statusText, stepsOf,
+  bar, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, planOf, rowForTab, rowForWorkspace, statusText, stepsOf,
   visibleRows, type Group, type Row, type Step,
 } from "./rows";
 
@@ -33,9 +33,21 @@ function readRows(): Row[] {
   return rows;
 }
 
+const notePath = () => join(rowsDir(), NOTE_FILE);
+
+function readNote(): string[] {
+  try {
+    return noteLines(readFileSync(notePath(), "utf8"));
+  } catch {
+    return [];
+  }
+}
+
 const folders = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
 
 type Node =
+  | { kind: "note"; lines: string[] }
+  | { kind: "noteLine"; text: string }
   | { kind: "repo"; group: Group }
   | { kind: "session"; row: Row }
   | { kind: "step"; step: Step };
@@ -50,6 +62,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
   rows: Row[] = [];
+  note: string[] = [];
   /** The session whose tab last had focus in this window; sticky while a file has focus. */
   focusedId: string | undefined;
 
@@ -59,7 +72,11 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
 
   getChildren(node?: Node): Node[] {
     const now = Date.now();
-    if (!node) return groupByRepo(visibleRows(this.rows, now)).map((group) => ({ kind: "repo", group }));
+    if (!node) {
+      const groups: Node[] = groupByRepo(visibleRows(this.rows, now)).map((group) => ({ kind: "repo", group }));
+      return this.note.length > 0 ? [{ kind: "note", lines: this.note }, ...groups] : groups;
+    }
+    if (node.kind === "note") return node.lines.map((text) => ({ kind: "noteLine", text }));
     if (node.kind === "repo") return node.group.rows.map((row) => ({ kind: "session", row }));
     if (node.kind === "session") return stepsOf(node.row).map((step) => ({ kind: "step", step }));
     return [];
@@ -67,6 +84,23 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
 
   getTreeItem(node: Node): vscode.TreeItem {
     const now = Date.now();
+    const openNote = { command: "vscode.open", title: "Open restart note", arguments: [vscode.Uri.file(notePath())] };
+    if (node.kind === "note") {
+      const item = new vscode.TreeItem("Restart note", vscode.TreeItemCollapsibleState.Expanded);
+      item.id = "note";
+      item.iconPath = new vscode.ThemeIcon("note", new vscode.ThemeColor("charts.yellow"));
+      item.description = `${node.lines.length}`;
+      item.tooltip = "Where to start after restarting. Ask Claude to add or clear items.";
+      item.command = openNote;
+      return item;
+    }
+    if (node.kind === "noteLine") {
+      const item = new vscode.TreeItem(node.text, vscode.TreeItemCollapsibleState.None);
+      item.iconPath = new vscode.ThemeIcon("circle-small-filled", new vscode.ThemeColor("charts.yellow"));
+      item.tooltip = node.text;
+      item.command = openNote;
+      return item;
+    }
     if (node.kind === "repo") {
       const item = new vscode.TreeItem(node.group.repo, vscode.TreeItemCollapsibleState.Expanded);
       item.id = `repo:${node.group.repo}`;
@@ -123,6 +157,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const update = () => {
     tree.rows = readRows();
+    tree.note = readNote();
     const now = Date.now();
     // A Claude tab's label is the title the mod set, which its row records
     const tab = rowForTab(tree.rows, vscode.window.tabGroups.activeTabGroup.activeTab?.label ?? "", now);
