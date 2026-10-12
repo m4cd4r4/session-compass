@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, rowOf, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, rowOf, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -89,4 +89,12 @@ test('rowOf: carries steps, branch and cwd for the sidebar', () => {
   const row = rowOf('id1', { ...EMPTY, repo: 'r', branch: 'feat/x', plan: 'P', steps, updatedAt: 5, shownTitle: '1/2 P' }, false, 'I:/r')
   expect(row).toMatchObject({ id: 'id1', repo: 'r', plan: 'P', done: 1, total: 2, now: 'b', steps, branch: 'feat/x', cwd: 'I:/r', title: '1/2 P' })
   expect(rowOf('id2', EMPTY).title).toBe('')
+})
+
+test('noteContext: empty note says nothing, a note carries its text and path', () => {
+  expect(noteContext('  \n ', '/n.md')).toBe('')
+  const c = noteContext('- test the tab switch\n', 'C:/x/restart-note.md')
+  expect(c).toContain('- test the tab switch')
+  expect(c).toContain('C:/x/restart-note.md')
+  expect(c).toContain('first reply')
 })

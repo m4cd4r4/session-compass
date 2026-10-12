@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  GONE_MS, STALE_MS, bar, description, groupByRepo, isRow, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
+  GONE_MS, STALE_MS, bar, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
   type Row,
 } from "../src/rows.ts";
 
@@ -76,6 +76,11 @@ test("statusText and bar", () => {
   assert.equal(statusText(row({ plan: "" })), "(no plan yet)");
   assert.equal(bar(1, 2, 4), "■■□□");
   assert.equal(bar(0, 0), "");
+});
+
+test("noteLines: one item per line, markers and blanks dropped", () => {
+  assert.deepEqual(noteLines("- first\r\n\n* second\n1. third\nplain\n   \n"), ["first", "second", "third", "plain"]);
+  assert.deepEqual(noteLines(""), []);
 });
 
 test("isRow rejects junk", () => {

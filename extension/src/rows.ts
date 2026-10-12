@@ -108,6 +108,15 @@ export const rowForTab = (rows: readonly Row[], label: string, nowMs: number): R
 export const isInWorkspace =(r: Row, folders: readonly string[]) =>
   !!r.cwd && folders.some((f) => inside(r.cwd!, f));
 
+export const NOTE_FILE = "restart-note.md";
+
+/** The note's items: one per non-blank line, list markers dropped. */
+export const noteLines = (text: string) =>
+  text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*]|\d+\.)\s+/, "").trim())
+    .filter(Boolean);
+
 /** Status bar text for this window's session. */
 export const statusText = (r: Row) => {
   const stage = r.total > 0 ? `${r.done}/${r.total} ` : "";
