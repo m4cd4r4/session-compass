@@ -1,0 +1,81 @@
+{
+  "name": "session-compass",
+  "displayName": "Session Compass",
+  "description": "Where each parallel Claude Code session is: plan, stage, current step, branch.",
+  "version": "0.1.0",
+  "publisher": "macdara",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m4cd4r4/session-compass",
+    "directory": "extension"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sessionCompass",
+          "title": "Session Compass",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "sessionCompass": [
+        {
+          "id": "sessionCompass.sessions",
+          "name": "Sessions",
+          "contextualTitle": "Session Compass"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sessionCompass.sessions",
+        "contents": "No live Claude Code sessions recorded.\n\nA session appears here once it calls the compass tool (the session-compass mod adds it)."
+      }
+    ],
+    "commands": [
+      {
+        "command": "sessionCompass.refresh",
+        "title": "Refresh",
+        "category": "Session Compass",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sessionCompass.refresh",
+          "when": "view == sessionCompass.sessions",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "check": "tsc -p .",
+    "test": "node --test test/*.test.ts",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.4.0"
+  }
+}

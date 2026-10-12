@@ -1,0 +1,173 @@
+import { readdirSync, readFileSync, watch, type FSWatcher } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import * as vscode from "vscode";
+import {
+  bar, description, groupByRepo, isInWorkspace, isRow, isStale, planOf, rowForWorkspace, statusText, stepsOf,
+  visibleRows, type Group, type Row, type Step,
+} from "./rows";
+
+const VIEW = "sessionCompass.sessions";
+// Ages in the tree and staleness tick on with no file change
+const TICK_MS = 30_000;
+
+/** Same folder the mod writes to: CLAUDE_CONFIG_DIR, else ~/.claude. */
+const rowsDir = () => join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "session-compass");
+
+function readRows(): Row[] {
+  let names: string[];
+  try {
+    names = readdirSync(rowsDir()).filter((n) => n.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const rows: Row[] = [];
+  for (const n of names) {
+    try {
+      const v: unknown = JSON.parse(readFileSync(join(rowsDir(), n), "utf8"));
+      if (isRow(v)) rows.push(v);
+    } catch {
+      // half-written file; the next change event reads it whole
+    }
+  }
+  return rows;
+}
+
+const folders = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
+
+type Node =
+  | { kind: "repo"; group: Group }
+  | { kind: "session"; row: Row }
+  | { kind: "step"; step: Step };
+
+const STEP_ICON: Record<Step["status"], vscode.ThemeIcon> = {
+  done: new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed")),
+  now: new vscode.ThemeIcon("arrow-right", new vscode.ThemeColor("charts.blue")),
+  todo: new vscode.ThemeIcon("circle-large-outline", new vscode.ThemeColor("disabledForeground")),
+};
+
+class SessionsTree implements vscode.TreeDataProvider<Node> {
+  private readonly changed = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this.changed.event;
+  rows: Row[] = [];
+
+  refresh() {
+    this.rows = readRows();
+    this.changed.fire();
+  }
+
+  getChildren(node?: Node): Node[] {
+    const now = Date.now();
+    if (!node) return groupByRepo(visibleRows(this.rows, now)).map((group) => ({ kind: "repo", group }));
+    if (node.kind === "repo") return node.group.rows.map((row) => ({ kind: "session", row }));
+    if (node.kind === "session") return stepsOf(node.row).map((step) => ({ kind: "step", step }));
+    return [];
+  }
+
+  getTreeItem(node: Node): vscode.TreeItem {
+    const now = Date.now();
+    if (node.kind === "repo") {
+      const item = new vscode.TreeItem(node.group.repo, vscode.TreeItemCollapsibleState.Expanded);
+      item.id = `repo:${node.group.repo}`;
+      item.iconPath = new vscode.ThemeIcon("repo");
+      item.description = `${node.group.rows.length}`;
+      return item;
+    }
+    if (node.kind === "step") {
+      const item = new vscode.TreeItem(node.step.text, vscode.TreeItemCollapsibleState.None);
+      item.iconPath = STEP_ICON[node.step.status];
+      return item;
+    }
+    const r = node.row;
+    const stale = isStale(r, now);
+    const mine = isInWorkspace(r, folders());
+    const hasSteps = stepsOf(r).length > 0;
+    const item = new vscode.TreeItem(
+      planOf(r),
+      hasSteps
+        ? mine && !stale ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
+    item.id = `session:${r.id}`;
+    item.description = description(r, now);
+    item.iconPath = stale
+      ? new vscode.ThemeIcon("debug-pause", new vscode.ThemeColor("disabledForeground"))
+      : r.total > 0 && r.done === r.total
+        ? new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed"))
+        : new vscode.ThemeIcon(mine ? "compass-active" : "compass", mine ? new vscode.ThemeColor("charts.blue") : undefined);
+    item.tooltip = tooltip(r, now, mine);
+    return item;
+  }
+}
+
+function tooltip(r: Row, now: number, mine: boolean) {
+  const md = new vscode.MarkdownString(undefined, true);
+  md.appendMarkdown(`**${planOf(r)}**${mine ? " · this window" : ""}\n\n`);
+  if (r.total > 0) md.appendMarkdown(`\`${bar(r.done, r.total)}\` ${r.done}/${r.total}\n\n`);
+  if (r.now) md.appendMarkdown(`Now: ${r.now}\n\n`);
+  const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
+  if (where) md.appendMarkdown(`${where}\n\n`);
+  if (r.cwd) md.appendMarkdown(`\`${r.cwd}\`\n\n`);
+  md.appendMarkdown(`Updated ${new Date(r.updatedAt).toLocaleTimeString()}${isStale(r, now) ? " (idle)" : ""}`);
+  return md;
+}
+
+export function activate(context: vscode.ExtensionContext) {
+  const tree = new SessionsTree();
+  const view = vscode.window.createTreeView(VIEW, { treeDataProvider: tree, showCollapseAll: true });
+
+  const status = vscode.window.createStatusBarItem("sessionCompass.status", vscode.StatusBarAlignment.Left, 50);
+  status.name = "Session Compass";
+  status.command = `${VIEW}.focus`;
+
+  const update = () => {
+    tree.refresh();
+    const now = Date.now();
+    const live = visibleRows(tree.rows, now).filter((r) => !isStale(r, now));
+    view.badge = live.length > 0 ? { value: live.length, tooltip: `${live.length} live sessions` } : undefined;
+    const mine = rowForWorkspace(tree.rows, folders(), now);
+    if (mine) {
+      status.text = `$(compass) ${statusText(mine)}`;
+      status.tooltip = tooltip(mine, now, true);
+      status.show();
+    } else {
+      status.hide();
+    }
+  };
+
+  // fs.watch fires several events per write; one refresh per burst
+  let timer: NodeJS.Timeout | undefined;
+  const soon = () => {
+    clearTimeout(timer);
+    timer = setTimeout(update, 150);
+  };
+  let watcher: FSWatcher | undefined;
+  const startWatch = () => {
+    if (watcher) return;
+    try {
+      watcher = watch(rowsDir(), soon);
+      watcher.on("error", () => {
+        watcher?.close();
+        watcher = undefined;
+      });
+    } catch {
+      // folder not made yet: the tick retries
+    }
+  };
+  startWatch();
+  const tick = setInterval(() => {
+    startWatch();
+    update();
+  }, TICK_MS);
+
+  context.subscriptions.push(
+    view,
+    status,
+    vscode.commands.registerCommand("sessionCompass.refresh", update),
+    vscode.workspace.onDidChangeWorkspaceFolders(update),
+    { dispose: () => { clearInterval(tick); clearTimeout(timer); watcher?.close(); } },
+  );
+  update();
+}
+
+export function deactivate() {}
