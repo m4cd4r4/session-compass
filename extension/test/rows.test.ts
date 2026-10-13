@@ -54,17 +54,17 @@ test("stepsOf falls back to the now line for rows without steps", () => {
 
 test("rowForWorkspace matches cwd inside a folder, any slash or case", () => {
   const rows = [
-    row({ id: "other", cwd: "I:/Scratch/other", updatedAt: NOW }),
-    row({ id: "mine-old", cwd: "I:\\Scratch\\solaisoft", updatedAt: NOW - 60000 }),
-    row({ id: "mine", cwd: "i:/scratch/solaisoft/app", updatedAt: NOW - 1000 }),
+    row({ id: "other", cwd: "C:/work/other", updatedAt: NOW }),
+    row({ id: "mine-old", cwd: "C:\\work\\myapp", updatedAt: NOW - 60000 }),
+    row({ id: "mine", cwd: "c:/work/myapp/app", updatedAt: NOW - 1000 }),
   ];
-  assert.equal(rowForWorkspace(rows, ["I:\\Scratch\\solaisoft"], NOW)?.id, "mine");
-  assert.equal(rowForWorkspace(rows, ["I:/Scratch/solaisoft-wt"], NOW), undefined);
+  assert.equal(rowForWorkspace(rows, ["C:\\work\\myapp"], NOW)?.id, "mine");
+  assert.equal(rowForWorkspace(rows, ["C:/work/myapp-wt"], NOW), undefined);
 });
 
 test("rowForWorkspace falls back to repo name for rows without cwd, never to a stale row", () => {
-  assert.equal(rowForWorkspace([row({ id: "a", repo: "solaisoft" })], ["I:/Scratch/solaisoft"], NOW)?.id, "a");
-  assert.equal(rowForWorkspace([row({ repo: "solaisoft", updatedAt: NOW - STALE_MS })], ["I:/Scratch/solaisoft"], NOW), undefined);
+  assert.equal(rowForWorkspace([row({ id: "a", repo: "myapp" })], ["C:/work/myapp"], NOW)?.id, "a");
+  assert.equal(rowForWorkspace([row({ repo: "myapp", updatedAt: NOW - STALE_MS })], ["C:/work/myapp"], NOW), undefined);
 });
 
 test("rowForTab matches the recorded title exactly, newest first, never an ended row", () => {
