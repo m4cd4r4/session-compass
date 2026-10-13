@@ -17,6 +17,22 @@
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "sessions",
+    "worktree",
+    "parallel"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0A0A0A",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/m4cd4r4/session-compass#readme",
+  "bugs": {
+    "url": "https://github.com/m4cd4r4/session-compass/issues"
+  },
   "main": "./dist/extension.js",
   "activationEvents": [
     "onStartupFinished"
