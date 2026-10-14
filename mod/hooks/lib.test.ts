@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, rowOf, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -34,6 +34,39 @@ test('title: falls back to the first real prompt when there is no plan', () => {
 test('topicOf: "go" is not a topic', () => {
   expect(topicOf('go')).toBe('')
   expect(topicOf('continue from the handover')).toBe('continue from the handover')
+})
+
+test('topicOf: an injected tag block is not a topic', () => {
+  expect(topicOf('<browser_instruction># Claude in Chrome browser automation tools are available')).toBe('')
+  expect(topicOf('<system-reminder>\nplease keep working on the current task\n</system-reminder>\nfix the pricing table')).toBe('fix the pricing table')
+})
+
+test('sessionTitleOf: only a reported plan renames the session', () => {
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp', topic: 'Fix the pricing table on mobile' })).toBeUndefined()
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' })).toBeUndefined()
+  expect(sessionTitleOf({ ...EMPTY, plan: 'Pricing table fix', steps: [{ text: 'a', status: 'done' }, { text: 'b', status: 'now' }] })).toBe('1/2 Pricing table fix')
+})
+
+test('restoreFrom: an empty compass takes the saved plan, steps and branch back', () => {
+  const saved: Row = { ...rowOf('s1', { ...EMPTY, repo: 'myapp', branch: 'feat/x', plan: 'Pricing fix', steps: [{ text: 'a', status: 'done' }, { text: 'b', status: 'now' }] }), ended: true }
+  const back = restoreFrom(EMPTY, saved)
+  expect(back.plan).toBe('Pricing fix')
+  expect(back.steps).toEqual(saved.steps)
+  expect(back.branch).toBe('feat/x')
+  // a compass that already has a plan is left alone
+  const live = { ...EMPTY, plan: 'Newer plan' }
+  expect(restoreFrom(live, saved)).toBe(live)
+})
+
+test('rowToWrite: an empty compass never wipes a saved plan, it only marks the row ended', () => {
+  const saved: Row = rowOf('s1', { ...EMPTY, plan: 'Pricing fix', steps: [{ text: 'a', status: 'now' }], updatedAt: 5 })
+  const kept = rowToWrite(saved, 's1', { ...EMPTY, updatedAt: 9 }, true, '/w')
+  expect(kept.plan).toBe('Pricing fix')
+  expect(kept.steps).toEqual(saved.steps)
+  expect(kept.ended).toBe(true)
+  // a compass with content, or no saved row, writes as usual
+  expect(rowToWrite(saved, 's1', { ...EMPTY, plan: 'Other', updatedAt: 9 }, false, '/w').plan).toBe('Other')
+  expect(rowToWrite(undefined, 's1', EMPTY, false, '/w').plan).toBe('')
 })
 
 test('statusText and newlyDone', () => {

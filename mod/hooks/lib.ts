@@ -28,6 +28,10 @@ export const title = (c: Compass, max = 60) => {
   return `${head}${cut(label, room)}${tail}`
 }
 
+// The tab title is a rename of the session, so a guess from the first prompt or the repo
+// name never gets to overwrite a title the person or Claude Code already chose
+export const sessionTitleOf = (c: Compass, max = 60) => (c.plan ? title(c, max) || undefined : undefined)
+
 export const detailText = (c: Compass) => {
   const { done, total, now } = stage(c.steps)
   const lines = [
@@ -56,8 +60,12 @@ export const newlyDone = (before: readonly Step[], after: readonly Step[]) =>
   after.filter(s => s.status === 'done' && !before.some(b => b.text === s.text && b.status === 'done'))
 
 // A prompt only counts as a topic when it says something: "go" does not
+// Injected blocks (<system-reminder>, <browser_instruction>) are not what the person typed
 export const topicOf = (prompt: string) => {
-  const line = prompt.trim().split(/\r?\n/)[0] ?? ''
+  const typed = prompt
+    .replace(/<([a-z][\w-]*)>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<[a-z][\w-]*>[\s\S]*$/i, '')
+  const line = typed.trim().split(/\r?\n/)[0] ?? ''
   return line.split(/\s+/).filter(Boolean).length >= 4 ? cut(line, 48) : ''
 }
 
@@ -121,6 +129,26 @@ export const rowOf = (id: string, c: Compass, ended = false, cwd = ''): Row => {
     id, repo: c.repo, where: whereLabel(c), plan: c.plan || c.topic, done, total, now, updatedAt: c.updatedAt, ended,
     steps: c.steps, branch: c.branch, cwd, title: c.shownTitle ?? '',
   }
+}
+
+const isEmpty = (c: Compass) => !c.plan && !c.topic && c.steps.length === 0
+
+// A reopened session starts with an empty compass; its saved row still knows the plan.
+// A row's plan may only be the first prompt, so it counts as a plan only when it has steps.
+export const restoreFrom = (c: Compass, saved: Row): Compass => {
+  if (!isEmpty(c) || !saved.plan) return c
+  const steps = saved.steps ?? []
+  return {
+    ...c,
+    branch: c.branch || saved.branch || '',
+    ...(steps.length > 0 ? { plan: saved.plan, steps } : { topic: saved.plan }),
+  }
+}
+
+// The row to put on disk: an empty compass must not replace a row that holds a plan
+export const rowToWrite = (existing: Row | undefined, id: string, c: Compass, ended: boolean, cwd: string): Row => {
+  const wipes = isEmpty(c) && existing && (existing.plan || (existing.steps?.length ?? 0) > 0)
+  return wipes ? { ...existing, ended } : rowOf(id, c, ended, cwd)
 }
 
 export const sessionsReport = (rows: readonly Row[], selfId: string, nowMs: number) => {
