@@ -68,9 +68,26 @@
         "title": "Refresh",
         "category": "Session Compass",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "sessionCompass.copySessionId",
+        "title": "Copy Session ID",
+        "category": "Session Compass"
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "sessionCompass.copySessionId",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sessionCompass.copySessionId",
+          "when": "view == sessionCompass.sessions && viewItem == session"
+        }
+      ],
       "view/title": [
         {
           "command": "sessionCompass.refresh",

@@ -137,3 +137,16 @@ export const statusText = (r: Row) => {
   const now = r.now ? ` · ${cut(r.now, 32)}` : "";
   return `${stage}${cut(planOf(r), 36)}${now}`;
 };
+
+export const COPY_ID_COMMAND = "sessionCompass.copySessionId";
+
+/** A tooltip link that runs the copy command for one session. */
+export const copyIdLink = (id: string) =>
+  `command:${COPY_ID_COMMAND}?${encodeURIComponent(JSON.stringify([id]))}`;
+
+/** The session ID from a command argument: the raw ID (tooltip link) or a tree item whose id is `session:<id>` (context menu). */
+export const sessionIdFromArg = (arg: unknown): string | undefined => {
+  if (typeof arg === "string") return arg || undefined;
+  const id = (arg as { id?: unknown } | null)?.id;
+  return typeof id === "string" && id.startsWith("session:") && id.length > 8 ? id.slice(8) : undefined;
+};

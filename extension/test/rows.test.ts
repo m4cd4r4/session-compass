@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  GONE_MS, STALE_MS, bar, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
+  COPY_ID_COMMAND, GONE_MS, STALE_MS, bar, copyIdLink, sessionIdFromArg, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
   type Row,
 } from "../src/rows.ts";
 
@@ -108,4 +108,19 @@ test("isRow rejects junk", () => {
   assert.equal(isRow(null), false);
   assert.equal(isRow({ id: "a" }), false);
   assert.equal(isRow(row({})), true);
+});
+
+test("copyIdLink carries the ID as the command's one argument", () => {
+  const link = copyIdLink("7b19a432-4e3e-4760-88d1-c02367218db3");
+  assert.ok(link.startsWith(`command:${COPY_ID_COMMAND}?`));
+  assert.deepEqual(JSON.parse(decodeURIComponent(link.split("?")[1])), ["7b19a432-4e3e-4760-88d1-c02367218db3"]);
+});
+
+test("sessionIdFromArg takes a raw ID or a tree item, and nothing else", () => {
+  assert.equal(sessionIdFromArg("abc"), "abc");
+  assert.equal(sessionIdFromArg({ id: "session:abc" }), "abc");
+  assert.equal(sessionIdFromArg({ id: "step:abc" }), undefined);
+  assert.equal(sessionIdFromArg({ id: "session:" }), undefined);
+  assert.equal(sessionIdFromArg(""), undefined);
+  assert.equal(sessionIdFromArg(undefined), undefined);
 });
