@@ -16,8 +16,14 @@ export const whereLabel = (c: Compass) =>
 
 // 3/7 plan · branch-or-slug, capped; the plan gives way first. Stage leads because
 // the tab cuts at ~22 characters; the repo is left out (Peacock tells workspaces apart)
-// and stands in only when there is no plan
-export const title = (c: Compass, max = 60) => {
+// and stands in only when there is no plan. A session tag leads ("[7b19a4] "), so it survives
+// the tab cut; with a tag and nothing else to say, the tag alone is the title
+export const title = (c: Compass, max = 60, tag = ''): string => {
+  if (tag) {
+    if (!c.plan && !c.topic) return `[${tag}]`
+    const lead = `[${tag}] `
+    return `${lead}${title(c, max - lead.length)}`
+  }
   const { done, total } = stage(c.steps)
   const head = total > 0 ? `${done}/${total} ` : ''
   const label = c.plan || c.topic || c.repo
@@ -31,11 +37,14 @@ export const title = (c: Compass, max = 60) => {
 // The tab title is a rename of the session: the plan, else the first real prompt. It is sent
 // only when it differs from the last one shown, so a name set by hand survives later prompts,
 // and the bare repo name never stands in (it would label every plan-less tab the same)
-export const sessionTitleOf = (c: Compass, previous: string | undefined, max = 60) => {
-  if (!c.plan && !c.topic) return undefined
-  const next = title(c, max)
+export const sessionTitleOf = (c: Compass, previous: string | undefined, tag = '', max = 60) => {
+  if (!c.plan && !c.topic && !tag) return undefined
+  const next = title(c, max, tag)
   return next && next !== previous ? next : undefined
 }
+
+// First 6 characters of the session UUID: what the title, the row and who-owns can all show
+export const tagOf = (sessionId: string) => sessionId.replace(/-/g, '').slice(0, 6).toLowerCase()
 
 export const detailText = (c: Compass) => {
   const { done, total, now } = stage(c.steps)

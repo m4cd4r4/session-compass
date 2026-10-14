@@ -4,7 +4,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Compass, Step, StepStatus } from '../types'
 import {
   EMPTY, NOTE_FILE, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, restoreFrom, rowToWrite, sessionTitleOf, sessionsReport,
-  stage, statusText, title, topicOf, whereFromGit, whereLabel,
+  stage, statusText, tagOf, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
 import type { Row } from './lib'
 
@@ -151,8 +151,9 @@ export const register: Register = on => {
     let c = await refreshWhere($)
     if (topic && !c.topic) c = await save($, x => ({ ...x, topic }))
     const previous = c.shownTitle
-    const shownTitle = title(c)
-    const sessionTitle = sessionTitleOf(c, previous)
+    const tag = tagOf(await $.session.id())
+    const shownTitle = title(c, 60, tag)
+    const sessionTitle = sessionTitleOf(c, previous, tag)
     if (shownTitle !== previous) c = await save($, x => ({ ...x, shownTitle }))
     await openPane($)
     return { ...r, sessionTitle }

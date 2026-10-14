@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagOf, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -29,6 +29,21 @@ test('title: the plan is trimmed first and the stage survives the cap', () => {
 
 test('title: falls back to the first real prompt when there is no plan', () => {
   expect(title({ ...EMPTY, repo: 'myapp', topic: 'Fix the pricing table on mobile' })).toBe('Fix the pricing table on mobile')
+})
+
+test('title: a session tag leads, the stage and plan follow, the cap still holds', () => {
+  const c = { ...EMPTY, repo: 'myapp', plan: 'Pricing table fix', steps: [{ text: 'a', status: 'done' as const }, { text: 'b', status: 'now' as const }] }
+  expect(title(c, 60, '7b19a4')).toBe('[7b19a4] 1/2 Pricing table fix')
+  expect(title({ ...c, plan: 'x'.repeat(80) }, 40, '7b19a4').length).toBeLessThanOrEqual(40)
+  expect(title({ ...c, plan: 'x'.repeat(80) }, 40, '7b19a4').startsWith('[7b19a4] 1/2 ')).toBe(true)
+})
+
+test('sessionTitleOf and tagOf: a plan-less session gets the tag alone, once', () => {
+  expect(tagOf('7B19A432-4e3e-4760-88d1-c02367218db3')).toBe('7b19a4')
+  expect(tagOf('')).toBe('')
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' }, '', '7b19a4')).toBe('[7b19a4]')
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' }, '[7b19a4]', '7b19a4')).toBeUndefined()
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp', topic: 'Fix the pricing table on mobile' }, '[7b19a4]', '7b19a4')).toBe('[7b19a4] Fix the pricing table on mobile')
 })
 
 test('topicOf: "go" is not a topic', () => {
