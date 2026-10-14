@@ -28,9 +28,14 @@ export const title = (c: Compass, max = 60) => {
   return `${head}${cut(label, room)}${tail}`
 }
 
-// The tab title is a rename of the session, so a guess from the first prompt or the repo
-// name never gets to overwrite a title the person or Claude Code already chose
-export const sessionTitleOf = (c: Compass, max = 60) => (c.plan ? title(c, max) || undefined : undefined)
+// The tab title is a rename of the session: the plan, else the first real prompt. It is sent
+// only when it differs from the last one shown, so a name set by hand survives later prompts,
+// and the bare repo name never stands in (it would label every plan-less tab the same)
+export const sessionTitleOf = (c: Compass, previous: string | undefined, max = 60) => {
+  if (!c.plan && !c.topic) return undefined
+  const next = title(c, max)
+  return next && next !== previous ? next : undefined
+}
 
 export const detailText = (c: Compass) => {
   const { done, total, now } = stage(c.steps)
@@ -141,6 +146,7 @@ export const restoreFrom = (c: Compass, saved: Row): Compass => {
   return {
     ...c,
     branch: c.branch || saved.branch || '',
+    shownTitle: saved.title || undefined,
     ...(steps.length > 0 ? { plan: saved.plan, steps } : { topic: saved.plan }),
   }
 }
