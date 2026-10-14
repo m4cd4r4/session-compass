@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Compass, Step, StepStatus } from '../types'
 import {
-  EMPTY, NOTE_FILE, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, rowOf, sessionsReport,
+  EMPTY, NOTE_FILE, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, restoreFrom, rowToWrite, sessionTitleOf, sessionsReport,
   stage, statusText, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
 import type { Row } from './lib'
@@ -50,11 +50,28 @@ async function rowsDir($: EngineInterface) {
   return claudeDir($.plugin.root, configDir, home || profile)
 }
 
+async function readRow($: EngineInterface): Promise<Row | undefined> {
+  const dir = await rowsDir($)
+  if (!dir) return undefined
+  const text = await $.fs.read(`${dir}/session-compass/${await $.session.id()}.json`).catch(() => '')
+  try { return JSON.parse(String(text ?? '')) as Row } catch { return undefined }
+}
+
 async function writeRow($: EngineInterface, c: Compass, ended: boolean) {
   const dir = await rowsDir($)
   if (!dir) return
   const id = await $.session.id()
-  await $.fs.write(`${dir}/session-compass/${id}.json`, JSON.stringify(rowOf(id, c, ended, await $.session.root()))).catch(() => undefined)
+  const row = rowToWrite(await readRow($), id, c, ended, await $.session.root())
+  await $.fs.write(`${dir}/session-compass/${id}.json`, JSON.stringify(row)).catch(() => undefined)
+}
+
+// A reopened session starts with an empty atom; its saved row still holds the plan
+async function restoreSaved($: EngineInterface) {
+  const saved = await readRow($)
+  if (!saved) return
+  const now = await read($, compass)
+  const back = restoreFrom(now, saved)
+  if (back !== now) await update($, compass, () => back)
 }
 
 async function refreshWhere($: EngineInterface) {
@@ -104,6 +121,7 @@ export const register: Register = on => {
     })
     await $.command.register({ name: 'sessions', description: 'List every live Claude session: repo, branch, plan, stage, now' })
     await $.command.register({ name: 'compass', description: 'Print the plan, stage, done, now and todo of this session' })
+    await restoreSaved($)
     await refreshWhere($)
     await openPane($)
     return next(e)
@@ -135,7 +153,7 @@ export const register: Register = on => {
     const shownTitle = title(c)
     if (shownTitle !== c.shownTitle) c = await save($, x => ({ ...x, shownTitle }))
     await openPane($)
-    return { ...r, sessionTitle: shownTitle || undefined }
+    return { ...r, sessionTitle: sessionTitleOf(c) }
   }).catch(($, e, next) => next(e))
 
   // The cast: the generated tool types list MCP servers' tools, not this mod's own
