@@ -8,6 +8,7 @@ import {
 } from "./rows";
 
 const VIEW = "sessionCompass.sessions";
+const COPY_ID = "sessionCompass.copyId";
 // Ages in the tree and staleness tick on with no file change
 const TICK_MS = 30_000;
 
@@ -143,6 +144,9 @@ function tooltip(r: Row, now: number, scope: string) {
   const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
   if (where) md.appendMarkdown(`${where}\n\n`);
   if (r.cwd) md.appendMarkdown(`\`${r.cwd}\`\n\n`);
+  const copy = `command:${COPY_ID}?${encodeURIComponent(JSON.stringify([r.id]))}`;
+  md.isTrusted = { enabledCommands: [COPY_ID] };
+  md.appendMarkdown(`Session \`${r.id}\` · [Copy](${copy})\n\n`);
   md.appendMarkdown(`Updated ${new Date(r.updatedAt).toLocaleTimeString()}${isStale(r, now) ? " (idle)" : ""}`);
   return md;
 }
@@ -205,6 +209,11 @@ export function activate(context: vscode.ExtensionContext) {
     view,
     status,
     vscode.commands.registerCommand("sessionCompass.refresh", update),
+    vscode.commands.registerCommand(COPY_ID, async (id?: string) => {
+      if (typeof id !== "string" || !id) return;
+      await vscode.env.clipboard.writeText(id);
+      vscode.window.setStatusBarMessage(`Copied session ID ${id}`, 3000);
+    }),
     vscode.workspace.onDidChangeWorkspaceFolders(update),
     // Fires on focus moves and on label changes, so a retitled tab is picked up too
     vscode.window.tabGroups.onDidChangeTabs(update),
