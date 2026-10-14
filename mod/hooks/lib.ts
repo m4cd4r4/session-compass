@@ -146,6 +146,7 @@ export const restoreFrom = (c: Compass, saved: Row): Compass => {
   return {
     ...c,
     branch: c.branch || saved.branch || '',
+    shownTitle: saved.title || undefined,
     ...(steps.length > 0 ? { plan: saved.plan, steps } : { topic: saved.plan }),
   }
 }
