@@ -150,10 +150,12 @@ export const register: Register = on => {
     const topic = topicOf(e.prompt ?? '')
     let c = await refreshWhere($)
     if (topic && !c.topic) c = await save($, x => ({ ...x, topic }))
+    const previous = c.shownTitle
     const shownTitle = title(c)
-    if (shownTitle !== c.shownTitle) c = await save($, x => ({ ...x, shownTitle }))
+    const sessionTitle = sessionTitleOf(c, previous)
+    if (shownTitle !== previous) c = await save($, x => ({ ...x, shownTitle }))
     await openPane($)
-    return { ...r, sessionTitle: sessionTitleOf(c) }
+    return { ...r, sessionTitle }
   }).catch(($, e, next) => next(e))
 
   // The cast: the generated tool types list MCP servers' tools, not this mod's own

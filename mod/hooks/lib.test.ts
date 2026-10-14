@@ -41,10 +41,12 @@ test('topicOf: an injected tag block is not a topic', () => {
   expect(topicOf('<system-reminder>\nplease keep working on the current task\n</system-reminder>\nfix the pricing table')).toBe('fix the pricing table')
 })
 
-test('sessionTitleOf: only a reported plan renames the session', () => {
-  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp', topic: 'Fix the pricing table on mobile' })).toBeUndefined()
-  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' })).toBeUndefined()
-  expect(sessionTitleOf({ ...EMPTY, plan: 'Pricing table fix', steps: [{ text: 'a', status: 'done' }, { text: 'b', status: 'now' }] })).toBe('1/2 Pricing table fix')
+test('sessionTitleOf: plan, else topic, sent only when it changes, never the bare repo', () => {
+  const planned = { ...EMPTY, repo: 'myapp', plan: 'Pricing table fix', steps: [{ text: 'a', status: 'done' as const }, { text: 'b', status: 'now' as const }] }
+  expect(sessionTitleOf(planned, '')).toBe('1/2 Pricing table fix')
+  expect(sessionTitleOf(planned, '1/2 Pricing table fix')).toBeUndefined()
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp', topic: 'Fix the pricing table on mobile' }, '')).toBe('Fix the pricing table on mobile')
+  expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' }, '')).toBeUndefined()
 })
 
 test('restoreFrom: an empty compass takes the saved plan, steps and branch back', () => {
