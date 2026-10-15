@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import {
-  bar, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, planOf, rowForTab, rowForWorkspace, statusText, stepsOf,
-  visibleRows, type Group, type Row, type Step,
+  bar, COPY_ID_COMMAND, copyIdLink, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, planOf, rowForTab, rowForWorkspace,
+  sessionIdFromArg, statusText, stepsOf, visibleRows, type Group, type Row, type Step,
 } from "./rows";
 
 const VIEW = "sessionCompass.sessions";
@@ -124,6 +124,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
         : vscode.TreeItemCollapsibleState.None,
     );
     item.id = `session:${r.id}`;
+    item.contextValue = "session";
     item.description = description(r, now);
     item.iconPath = stale
       ? new vscode.ThemeIcon("debug-pause", new vscode.ThemeColor("disabledForeground"))
@@ -143,6 +144,8 @@ function tooltip(r: Row, now: number, scope: string) {
   const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
   if (where) md.appendMarkdown(`${where}\n\n`);
   if (r.cwd) md.appendMarkdown(`\`${r.cwd}\`\n\n`);
+  md.appendMarkdown(`Session \`${r.id}\` [Copy](${copyIdLink(r.id)})\n\n`);
+  md.isTrusted = { enabledCommands: [COPY_ID_COMMAND] };
   md.appendMarkdown(`Updated ${new Date(r.updatedAt).toLocaleTimeString()}${isStale(r, now) ? " (idle)" : ""}`);
   return md;
 }
@@ -205,6 +208,12 @@ export function activate(context: vscode.ExtensionContext) {
     view,
     status,
     vscode.commands.registerCommand("sessionCompass.refresh", update),
+    vscode.commands.registerCommand(COPY_ID_COMMAND, async (arg?: unknown) => {
+      const id = sessionIdFromArg(arg);
+      if (!id) return;
+      await vscode.env.clipboard.writeText(id);
+      vscode.window.setStatusBarMessage(`Copied session ID ${id}`, 3000);
+    }),
     vscode.workspace.onDidChangeWorkspaceFolders(update),
     // Fires on focus moves and on label changes, so a retitled tab is picked up too
     vscode.window.tabGroups.onDidChangeTabs(update),
