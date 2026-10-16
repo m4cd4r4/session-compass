@@ -1,7 +1,11 @@
-import { readdirSync, readFileSync, watch, type FSWatcher } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
+import {
+  COPY_RESUME_COMMAND, DEFAULT_RESUME, OPEN_WORKTREE_COMMAND, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg,
+  sliceDescription, sliceLabel, worktreeFromArg, type ParentPlan, type RegistryEntry, type Slice, type SliceState,
+} from "./plans";
 import {
   bar, COPY_ID_COMMAND, copyIdLink, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, planOf, rowForTab, rowForWorkspace,
   sessionIdFromArg, statusText, stepsOf, visibleRows, type Group, type Row, type Step,
@@ -45,12 +49,54 @@ function readNote(): string[] {
 
 const folders = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
 
+const expandHome = (p: string) => (p.startsWith("~/") || p === "~" ? join(homedir(), p.slice(1)) : p);
+
+/** The worktree registry: the setting, else workspaces/registry.json beside the session rows. */
+const registryPath = () => {
+  const set = vscode.workspace.getConfiguration("sessionCompass").get<string>("registryPath")?.trim();
+  return set ? expandHome(set) : join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "workspaces", "registry.json");
+};
+
+// The registry runs to megabytes: parse it again only when the file changes
+let registryCache: { path: string; mtimeMs: number; entries: RegistryEntry[] } | undefined;
+
+function readRegistry(): RegistryEntry[] {
+  const path = registryPath();
+  try {
+    const { mtimeMs } = statSync(path);
+    if (registryCache?.path === path && registryCache.mtimeMs === mtimeMs) return registryCache.entries;
+    const v = JSON.parse(readFileSync(path, "utf8")) as { entries?: unknown };
+    const entries = Array.isArray(v.entries) ? (v.entries as RegistryEntry[]) : [];
+    registryCache = { path, mtimeMs, entries };
+    return entries;
+  } catch {
+    // no registry (plans are optional), or one being rewritten: keep what was read last
+    return registryCache?.path === path ? registryCache.entries : [];
+  }
+}
+
+function readPlans(): ParentPlan[] {
+  const resumeCommand = vscode.workspace.getConfiguration("sessionCompass").get<string>("resumeCommand")?.trim() || DEFAULT_RESUME;
+  return plansFromRegistry(readRegistry(), { exists: existsSync, resumeCommand });
+}
+
 type Node =
   | { kind: "note"; lines: string[] }
   | { kind: "noteLine"; text: string }
   | { kind: "repo"; group: Group }
+  | { kind: "plan"; plan: ParentPlan }
+  | { kind: "slice"; slice: Slice }
   | { kind: "session"; row: Row }
   | { kind: "step"; step: Step };
+
+const SLICE_ICON: Record<SliceState, vscode.ThemeIcon> = {
+  done: new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed")),
+  working: new vscode.ThemeIcon("play-circle", new vscode.ThemeColor("charts.blue")),
+  blocked: new vscode.ThemeIcon("error", new vscode.ThemeColor("charts.red")),
+  due: new vscode.ThemeIcon("bell-dot", new vscode.ThemeColor("charts.yellow")),
+  held: new vscode.ThemeIcon("lock", new vscode.ThemeColor("disabledForeground")),
+  ready: new vscode.ThemeIcon("circle-large-outline"),
+};
 
 const STEP_ICON: Record<Step["status"], vscode.ThemeIcon> = {
   done: new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed")),
@@ -63,6 +109,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
   readonly onDidChangeTreeData = this.changed.event;
   rows: Row[] = [];
   note: string[] = [];
+  plans: ParentPlan[] = [];
   /** The session whose tab last had focus in this window; sticky while a file has focus. */
   focusedId: string | undefined;
 
@@ -73,11 +120,20 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
   getChildren(node?: Node): Node[] {
     const now = Date.now();
     if (!node) {
-      const groups: Node[] = groupByRepo(visibleRows(this.rows, now)).map((group) => ({ kind: "repo", group }));
+      const sessionGroups = groupByRepo(visibleRows(this.rows, now));
+      // A plan stays reachable when no session is running in its repo: its repo gets a group of its own
+      const planGroups = planOnlyRepos(this.plans, sessionGroups.map((g) => g.repo)).map((repo) => ({ repo, rows: [] }));
+      const groups: Node[] = [...sessionGroups, ...planGroups].map((group) => ({ kind: "repo", group }));
       return this.note.length > 0 ? [{ kind: "note", lines: this.note }, ...groups] : groups;
     }
     if (node.kind === "note") return node.lines.map((text) => ({ kind: "noteLine", text }));
-    if (node.kind === "repo") return node.group.rows.map((row) => ({ kind: "session", row }));
+    if (node.kind === "repo") {
+      return [
+        ...plansForRepo(this.plans, node.group.repo).map((plan): Node => ({ kind: "plan", plan })),
+        ...node.group.rows.map((row): Node => ({ kind: "session", row })),
+      ];
+    }
+    if (node.kind === "plan") return openSlices(node.plan).map((slice) => ({ kind: "slice", slice }));
     if (node.kind === "session") return stepsOf(node.row).map((step) => ({ kind: "step", step }));
     return [];
   }
@@ -105,7 +161,26 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
       const item = new vscode.TreeItem(node.group.repo, vscode.TreeItemCollapsibleState.Expanded);
       item.id = `repo:${node.group.repo}`;
       item.iconPath = new vscode.ThemeIcon("repo");
-      item.description = `${node.group.rows.length}`;
+      item.description = node.group.rows.length > 0 ? `${node.group.rows.length}` : "no live session";
+      return item;
+    }
+    if (node.kind === "plan") {
+      const p = node.plan;
+      const item = new vscode.TreeItem(p.name, vscode.TreeItemCollapsibleState.Expanded);
+      item.id = `plan:${p.repo}:${p.name}`;
+      item.iconPath = new vscode.ThemeIcon("milestone");
+      item.description = planSummary(p);
+      item.tooltip = `Parent plan ${p.name} (${planSummary(p)}), from the worktree registry. Click a slice to copy its resume command.`;
+      return item;
+    }
+    if (node.kind === "slice") {
+      const s = node.slice;
+      const item = new vscode.TreeItem(sliceLabel(s), vscode.TreeItemCollapsibleState.None);
+      item.iconPath = SLICE_ICON[s.state];
+      item.description = sliceDescription(s);
+      item.contextValue = s.worktree ? "slice-worktree" : s.resume ? "slice-resume" : "slice";
+      item.tooltip = sliceTooltip(s);
+      if (s.resume) item.command = { command: COPY_RESUME_COMMAND, title: "Copy resume command", arguments: [s.resume] };
       return item;
     }
     if (node.kind === "step") {
@@ -136,6 +211,18 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
   }
 }
 
+function sliceTooltip(s: Slice) {
+  const md = new vscode.MarkdownString();
+  md.appendMarkdown(`**${sliceLabel(s)}** · ${s.state}${s.wave ? ` · wave ${s.wave}` : ""}\n\n`);
+  md.appendText(s.why);
+  md.appendMarkdown("\n\n");
+  if (s.resume) {
+    md.appendMarkdown(s.worktree ? "Click to copy the worktree path:\n\n" : "Click to copy the resume command:\n\n");
+    md.appendCodeblock(s.resume, "sh");
+  }
+  return md;
+}
+
 function tooltip(r: Row, now: number, scope: string) {
   const md = new vscode.MarkdownString(undefined, true);
   md.appendMarkdown(`**${planOf(r)}**${scope ? ` · ${scope}` : ""}\n\n`);
@@ -161,6 +248,7 @@ export function activate(context: vscode.ExtensionContext) {
   const update = () => {
     tree.rows = readRows();
     tree.note = readNote();
+    tree.plans = readPlans();
     const now = Date.now();
     // A Claude tab's label is the title the mod set, which its row records
     const tab = rowForTab(tree.rows, vscode.window.tabGroups.activeTabGroup.activeTab?.label ?? "", now);
@@ -213,6 +301,19 @@ export function activate(context: vscode.ExtensionContext) {
       if (!id) return;
       await vscode.env.clipboard.writeText(id);
       vscode.window.setStatusBarMessage(`Copied session ID ${id}`, 3000);
+    }),
+    vscode.commands.registerCommand(COPY_RESUME_COMMAND, async (arg?: unknown) => {
+      const text = resumeFromArg(arg);
+      if (!text) return;
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.setStatusBarMessage(`Copied: ${text}`, 4000);
+    }),
+    vscode.commands.registerCommand(OPEN_WORKTREE_COMMAND, async (arg?: unknown) => {
+      const path = worktreeFromArg(arg);
+      if (path) await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(path), { forceNewWindow: true });
+    }),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("sessionCompass")) update();
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(update),
     // Fires on focus moves and on label changes, so a retitled tab is picked up too
