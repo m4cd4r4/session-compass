@@ -144,6 +144,21 @@ export const COPY_ID_COMMAND = "sessionCompass.copySessionId";
 export const copyIdLink = (id: string) =>
   `command:${COPY_ID_COMMAND}?${encodeURIComponent(JSON.stringify([id]))}`;
 
+export const PANE_COMMAND = "sessionCompass.togglePane";
+
+/** A tooltip link that turns one session's Compass pane on or off. */
+export const paneLink = (id: string) =>
+  `command:${PANE_COMMAND}?${encodeURIComponent(JSON.stringify([id]))}`;
+
+/** Whether a pane flag file (panes/<id>.json, read by the mod) asks for the pane; no file or a bad one is off. */
+export const paneOpenOf = (text: string) => {
+  try {
+    return (JSON.parse(text) as { open?: unknown } | null)?.open === true;
+  } catch {
+    return false;
+  }
+};
+
 /** The session ID from a command argument: the raw ID (tooltip link) or a tree item whose id is `session:<id>` (context menu). */
 export const sessionIdFromArg = (arg: unknown): string | undefined => {
   if (typeof arg === "string") return arg || undefined;

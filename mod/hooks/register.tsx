@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Compass, Step, StepStatus } from '../types'
 import {
-  EMPTY, NOTE_FILE, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, restoreFrom, rowToWrite, sessionTitleOf, sessionsReport,
+  EMPTY, NOTE_FILE, PANE_POLL_MS, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, paneOpenOf, restoreFrom, rowToWrite, sessionTitleOf, sessionsReport,
   stage, statusText, tagOf, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
 import type { Row } from './lib'
@@ -14,7 +14,6 @@ const PLAN_FILE = /[\\/]\.claude[\\/]plans[\\/][^\\/]+\.md$/i
 const GIT_MOVE = /\bgit\s+(checkout|switch|worktree)\b|\bcd\s/
 
 const compass = atom({ plugin: 'session-compass', key: 'compass' } as const, EMPTY)
-const isHidden = atom({ plugin: 'session-compass', key: 'isHidden' } as const, false)
 
 const GUIDE = [
   'Session compass: the person runs many sessions in parallel and orients by a panel fed by the `compass` tool.',
@@ -29,12 +28,15 @@ async function git($: EngineInterface, args: string[]) {
   return r && r.exitCode === 0 ? r.stdout.trim() : ''
 }
 
+// The status_line option; register sets it on every load
+let showStatus = true
+
 // Everything that writes state goes through here: title source, pane, status, shared file
 async function save($: EngineInterface, change: (c: Compass) => Compass) {
   const before = await read($, compass)
   const after = { ...change(before), updatedAt: await $.clock.now() }
   await update($, compass, () => after)
-  $.ui.status(statusText(after))
+  if (showStatus) $.ui.status(statusText(after))
   const { total } = stage(after.steps)
   for (const s of newlyDone(before.steps, after.steps)) {
     $.ui.toast(`Done ${stage(after.steps).done}/${total}: ${s.text}`)
@@ -87,13 +89,31 @@ async function refreshWhere($: EngineInterface) {
   return save($, c => ({ ...c, ...where, branch }))
 }
 
-async function openPane($: EngineInterface) {
-  if (await read($, isHidden)) return
-  const panes = await $.ui.panes().catch(() => [])
-  if (!panes.some((p: { id: string }) => p.id === PANE)) await $.ui.open({ id: PANE, title: 'Compass' })
+// The pane is off until the person turns it on from the extension's hover card, per session
+async function paneFile($: EngineInterface) {
+  const dir = await rowsDir($)
+  return dir ? `${dir}/session-compass/panes/${await $.session.id()}.json` : ''
 }
 
-export const register: Register = on => {
+async function writePaneFlag($: EngineInterface, open: boolean) {
+  const path = await paneFile($)
+  if (path) await $.fs.write(path, JSON.stringify({ open })).catch(() => undefined)
+}
+
+async function syncPane($: EngineInterface) {
+  const path = await paneFile($)
+  if (!path) return
+  const want = paneOpenOf(String((await $.fs.read(path).catch(() => '')) ?? ''))
+  const panes = await $.ui.panes().catch(() => [])
+  const shown = panes.some((p: { id: string }) => p.id === PANE)
+  if (want && !shown) await $.ui.open({ id: PANE, title: 'Compass' })
+  if (!want && shown) await $.ui.close({ id: PANE })
+}
+
+let paneTick: { cancel: () => void } | undefined
+
+export const register: Register = (on, options) => {
+  showStatus = options.status_line !== false
   on('session.start', async ($, e, next) => {
     await $.tool.register({
       name: 'compass',
@@ -123,7 +143,9 @@ export const register: Register = on => {
     await $.command.register({ name: 'compass', description: 'Print the plan, stage, done, now and todo of this session' })
     await restoreSaved($)
     await refreshWhere($)
-    await openPane($)
+    paneTick?.cancel()
+    paneTick = $.clock.every(PANE_POLL_MS, () => syncPane($).catch(() => undefined))
+    await syncPane($).catch(() => undefined)
     return next(e)
   })
 
@@ -155,7 +177,6 @@ export const register: Register = on => {
     const shownTitle = title(c, 60, tag)
     const sessionTitle = sessionTitleOf(c, previous, tag)
     if (shownTitle !== previous) c = await save($, x => ({ ...x, shownTitle }))
-    await openPane($)
     return { ...r, sessionTitle }
   }).catch(($, e, next) => next(e))
 
@@ -211,11 +232,18 @@ export const register: Register = on => {
 
   // The Pane does not draw in the VS Code panel, so the detail is printed on demand
   on('command.run', { command: 'compass' }, async $ => {
-    await openPane($)
     return { text: detailText(await read($, compass)) }
   })
 
+  // Closed by hand: record it, or the next poll opens it again
+  on('ui.close', async ($, e, next) => {
+    const r = await next(e)
+    if (e.id === PANE && e.origin.kind === 'person') await writePaneFlag($, false)
+    return r
+  }).catch(($, e, next) => next(e))
+
   on('session.end', async ($, e, next) => {
+    paneTick?.cancel()
     await writeRow($, await read($, compass), true)
     return next(e)
   })

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
@@ -7,7 +7,8 @@ import {
   sliceDescription, sliceLabel, worktreeFromArg, type ParentPlan, type RegistryEntry, type Slice, type SliceState,
 } from "./plans";
 import {
-  bar, COPY_ID_COMMAND, copyIdLink, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, planOf, rowForTab, rowForWorkspace,
+  bar, COPY_ID_COMMAND, copyIdLink, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, PANE_COMMAND, paneLink, paneOpenOf, planOf,
+  rowForTab, rowForWorkspace,
   sessionIdFromArg, statusText, stepsOf, visibleRows, type Group, type Row, type Step,
 } from "./rows";
 
@@ -35,6 +36,22 @@ function readRows(): Row[] {
     }
   }
   return rows;
+}
+
+// One flag per session; the mod polls it and opens or closes its Compass pane
+const paneFlag = (id: string) => join(rowsDir(), "panes", `${id}.json`);
+
+function isPaneOpen(id: string) {
+  try {
+    return paneOpenOf(readFileSync(paneFlag(id), "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+function setPaneOpen(id: string, open: boolean) {
+  mkdirSync(join(rowsDir(), "panes"), { recursive: true });
+  writeFileSync(paneFlag(id), JSON.stringify({ open }));
 }
 
 const notePath = () => join(rowsDir(), NOTE_FILE);
@@ -231,8 +248,8 @@ function tooltip(r: Row, now: number, scope: string) {
   const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
   if (where) md.appendMarkdown(`${where}\n\n`);
   if (r.cwd) md.appendMarkdown(`\`${r.cwd}\`\n\n`);
-  md.appendMarkdown(`Session \`${r.id}\` [Copy](${copyIdLink(r.id)})\n\n`);
-  md.isTrusted = { enabledCommands: [COPY_ID_COMMAND] };
+  md.appendMarkdown(`Session \`${r.id}\` [Copy](${copyIdLink(r.id)}) · [${isPaneOpen(r.id) ? "Hide panel" : "Show panel"}](${paneLink(r.id)})\n\n`);
+  md.isTrusted = { enabledCommands: [COPY_ID_COMMAND, PANE_COMMAND] };
   md.appendMarkdown(`Updated ${new Date(r.updatedAt).toLocaleTimeString()}${isStale(r, now) ? " (idle)" : ""}`);
   return md;
 }
@@ -301,6 +318,14 @@ export function activate(context: vscode.ExtensionContext) {
       if (!id) return;
       await vscode.env.clipboard.writeText(id);
       vscode.window.setStatusBarMessage(`Copied session ID ${id}`, 3000);
+    }),
+    vscode.commands.registerCommand(PANE_COMMAND, (arg?: unknown) => {
+      const id = sessionIdFromArg(arg);
+      if (!id) return;
+      const open = !isPaneOpen(id);
+      setPaneOpen(id, open);
+      vscode.window.setStatusBarMessage(open ? "Compass panel on for this session" : "Compass panel off for this session", 3000);
+      update();
     }),
     vscode.commands.registerCommand(COPY_RESUME_COMMAND, async (arg?: unknown) => {
       const text = resumeFromArg(arg);

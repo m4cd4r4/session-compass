@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  COPY_ID_COMMAND, GONE_MS, STALE_MS, bar, copyIdLink, sessionIdFromArg, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
+  COPY_ID_COMMAND, GONE_MS, PANE_COMMAND, paneLink, paneOpenOf, STALE_MS, bar, copyIdLink, sessionIdFromArg, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
   type Row,
 } from "../src/rows.ts";
 
@@ -123,4 +123,13 @@ test("sessionIdFromArg takes a raw ID or a tree item, and nothing else", () => {
   assert.equal(sessionIdFromArg({ id: "session:" }), undefined);
   assert.equal(sessionIdFromArg(""), undefined);
   assert.equal(sessionIdFromArg(undefined), undefined);
+});
+
+test("paneLink runs the toggle command for one session; paneOpenOf reads only open:true as on", () => {
+  assert.equal(paneLink("abc"), `command:${PANE_COMMAND}?${encodeURIComponent('["abc"]')}`);
+  assert.equal(sessionIdFromArg(JSON.parse(decodeURIComponent(paneLink("abc").split("?")[1]))[0]), "abc");
+  assert.equal(paneOpenOf('{"open":true}'), true);
+  assert.equal(paneOpenOf('{"open":false}'), false);
+  assert.equal(paneOpenOf(""), false);
+  assert.equal(paneOpenOf("null"), false);
 });
