@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagOf, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, paneOpenOf, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagOf, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -149,4 +149,12 @@ test('noteContext: empty note says nothing, a note carries its text and path', (
   expect(c).toContain('- test the tab switch')
   expect(c).toContain('C:/x/restart-note.md')
   expect(c).toContain('first reply')
+})
+
+test('paneOpenOf: only an explicit open:true opens the pane', () => {
+  expect(paneOpenOf('{"open":true}')).toBe(true)
+  expect(paneOpenOf('{"open":false}')).toBe(false)
+  expect(paneOpenOf('')).toBe(false)
+  expect(paneOpenOf('{"open":"yes"}')).toBe(false)
+  expect(paneOpenOf('not json')).toBe(false)
 })

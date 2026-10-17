@@ -83,6 +83,11 @@
         "command": "sessionCompass.openWorktree",
         "title": "Open Worktree in New Window",
         "category": "Session Compass"
+      },
+      {
+        "command": "sessionCompass.togglePane",
+        "title": "Show or Hide Compass Panel",
+        "category": "Session Compass"
       }
     ],
     "configuration": {
@@ -112,6 +117,10 @@
         },
         {
           "command": "sessionCompass.openWorktree",
+          "when": "false"
+        },
+        {
+          "command": "sessionCompass.togglePane",
           "when": "false"
         }
       ],

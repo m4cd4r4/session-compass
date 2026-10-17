@@ -2,6 +2,16 @@
   "name": "session-compass",
   "version": "0.4.4",
   "description": "Tab title, pane and /sessions list showing where each session is: repo, branch, plan, stage, now, done, todo",
-  "author": { "name": "Macdara" },
-  "types": "./types/index.d.ts"
+  "author": {
+    "name": "Macdara"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "status_line": {
+      "type": "boolean",
+      "title": "Status line",
+      "description": "Show the stage and plan in the status line above the prompt. Off hides the line; the tab title, the pane and the VS Code status bar still show where the session is.",
+      "default": true
+    }
+  }
 }

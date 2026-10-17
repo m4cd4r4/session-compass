@@ -188,3 +188,11 @@ export const sessionsReport = (rows: readonly Row[], selfId: string, nowMs: numb
   }
   return lines.join('\n')
 }
+
+/** How often a session reads its pane flag, which the extension's hover card writes. */
+export const PANE_POLL_MS = 2000
+
+/** Whether the pane flag file asks for the pane; no file or a bad one is off. */
+export const paneOpenOf = (text: string) => {
+  try { return (JSON.parse(text) as { open?: unknown })?.open === true } catch { return false }
+}
