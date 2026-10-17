@@ -36,6 +36,12 @@ It is also on [Open VSX](https://open-vsx.org/extension/macdara/session-compass)
 
 `/sessions` lists every live session in the terminal. `/compass` prints the plan, stage, done, now and todo of the current one.
 
+### Parent plans
+
+If a worktree registry exists (`workspaces/registry.json` in the same Claude folder, or the `sessionCompass.registryPath` setting), the sidebar shows each parent plan above the sessions of its repo: entries that share a `plan`, ordered by `wave`. A plan shows while it has two or more slices, at least one still open, and one touched in the last 14 days or with a worktree on disk. A repo with a plan but no live session gets a group of its own, so the plan stays reachable.
+
+Each open slice is one of: working (worktree on disk), blocked, due (its `gate_date` has passed), held (a `gate_reason` with no date or a date ahead, or a `depends_on` slug still open), or ready. Done slices are counted in the plan's summary, not listed. Click a slice to copy its resume action: the worktree path for a working slice, else `sessionCompass.resumeCommand` with `{slug}` filled in. Right-click a working slice to open its worktree in a new window. The extension only reads the registry; it never writes it.
+
 ### Restart note
 
 If `restart-note.md` exists in the same folder, a freshly started session (not one continued by `/clear` or a compact) is told its contents and mentions it in the first reply. The sidebar shows it at the top.

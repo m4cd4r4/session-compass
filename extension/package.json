@@ -73,12 +73,45 @@
         "command": "sessionCompass.copySessionId",
         "title": "Copy Session ID",
         "category": "Session Compass"
+      },
+      {
+        "command": "sessionCompass.copyResume",
+        "title": "Copy Resume Command",
+        "category": "Session Compass"
+      },
+      {
+        "command": "sessionCompass.openWorktree",
+        "title": "Open Worktree in New Window",
+        "category": "Session Compass"
       }
     ],
+    "configuration": {
+      "title": "Session Compass",
+      "properties": {
+        "sessionCompass.registryPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Worktree registry the parent plans are read from. Empty means `workspaces/registry.json` in the Claude config folder (`CLAUDE_CONFIG_DIR`, else `~/.claude`). No file, no plans."
+        },
+        "sessionCompass.resumeCommand": {
+          "type": "string",
+          "default": "bash ~/.claude/scripts/wt-mint.sh {slug} --launch",
+          "markdownDescription": "Command copied when you click a plan slice that has no worktree yet. `{slug}` becomes the slice's slug."
+        }
+      }
+    },
     "menus": {
       "commandPalette": [
         {
           "command": "sessionCompass.copySessionId",
+          "when": "false"
+        },
+        {
+          "command": "sessionCompass.copyResume",
+          "when": "false"
+        },
+        {
+          "command": "sessionCompass.openWorktree",
           "when": "false"
         }
       ],
@@ -86,6 +119,14 @@
         {
           "command": "sessionCompass.copySessionId",
           "when": "view == sessionCompass.sessions && viewItem == session"
+        },
+        {
+          "command": "sessionCompass.copyResume",
+          "when": "view == sessionCompass.sessions && viewItem =~ /^slice-(resume|worktree)$/"
+        },
+        {
+          "command": "sessionCompass.openWorktree",
+          "when": "view == sessionCompass.sessions && viewItem == slice-worktree"
         }
       ],
       "view/title": [
