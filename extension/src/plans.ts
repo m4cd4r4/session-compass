@@ -119,10 +119,13 @@ export const openSlices = (p: ParentPlan) => p.slices.filter((s) => s.state !== 
 /** The tree label: registry label first when set ("S3 seal-web"). */
 export const sliceLabel = (s: Slice) => (s.label ? `${s.label} ${s.slug}` : s.slug);
 
-/** The grey text beside a slice: wave and why, cut short; the tooltip has the rest. */
+/**
+ * The grey text beside a slice: the reason only, since a sidebar cuts it at ~30 characters. The icon
+ * already says held, and slices are listed in wave order; the tooltip carries the wave and the full text.
+ */
 export const sliceDescription = (s: Slice) => {
-  const why = s.why.length <= 60 ? s.why : `${s.why.slice(0, 59).trimEnd()}…`;
-  return s.wave ? `wave ${s.wave} · ${why}` : why;
+  const why = s.why.replace(/^held: /, "").replace(/, worktree on disk$/, "");
+  return why.length <= 60 ? why : `${why.slice(0, 59).trimEnd()}…`;
 };
 
 /** Plans for a repo group, matched on the repo folder name the mod records. */

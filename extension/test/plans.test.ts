@@ -98,8 +98,10 @@ test("slice label and description", () => {
   const web = p.slices.find((s) => s.slug === "seal-web")!;
   assert.equal(sliceLabel(web), "S3 seal-web");
   assert.equal(sliceLabel({ ...web, label: "" }), "seal-web");
-  assert.equal(sliceDescription(web), "wave 1 · held: after rd-legacy-delete merges");
-  const long = sliceDescription({ ...web, wave: "", why: "x".repeat(80) });
+  assert.equal(sliceDescription(web), "after rd-legacy-delete merges");
+  assert.equal(sliceDescription(p.slices.find((s) => s.slug === "seal-flip")!), "waits on seal-web");
+  assert.equal(sliceDescription(p.slices.find((s) => s.slug === "seal-landing")!), "in progress");
+  const long = sliceDescription({ ...web, why: "x".repeat(80) });
   assert.equal(long.length, 60);
   assert.ok(long.endsWith("…"));
 });
