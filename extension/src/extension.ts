@@ -121,6 +121,14 @@ const STEP_ICON: Record<Step["status"], vscode.ThemeIcon> = {
   todo: new vscode.ThemeIcon("circle-large-outline", new vscode.ThemeColor("disabledForeground")),
 };
 
+const STEP_MARK: Record<Step["status"], string> = {
+  done: "$(pass-filled)",
+  now: "$(arrow-right)",
+  todo: "$(circle-large-outline)",
+};
+const STEP_WORD: Record<Step["status"], string> = { done: "Done", now: "Now", todo: "To do" };
+const MAX_TOOLTIP_STEPS = 25;
+
 class SessionsTree implements vscode.TreeDataProvider<Node> {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
@@ -203,6 +211,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
     if (node.kind === "step") {
       const item = new vscode.TreeItem(node.step.text, vscode.TreeItemCollapsibleState.None);
       item.iconPath = STEP_ICON[node.step.status];
+      item.tooltip = new vscode.MarkdownString(`**${STEP_WORD[node.step.status]}**\n\n`).appendText(node.step.text);
       return item;
     }
     const r = node.row;
@@ -245,6 +254,13 @@ function tooltip(r: Row, now: number, scope: string) {
   md.appendMarkdown(`**${planOf(r)}**${scope ? ` · ${scope}` : ""}\n\n`);
   if (r.total > 0) md.appendMarkdown(`\`${bar(r.done, r.total)}\` ${r.done}/${r.total}\n\n`);
   if (r.now) md.appendMarkdown(`Now: ${r.now}\n\n`);
+  const steps = stepsOf(r);
+  steps.slice(0, MAX_TOOLTIP_STEPS).forEach((s, i) => {
+    md.appendMarkdown(`${STEP_MARK[s.status]} `);
+    md.appendText(s.text);
+    md.appendMarkdown(i === Math.min(steps.length, MAX_TOOLTIP_STEPS) - 1 ? "\n\n" : "  \n");
+  });
+  if (steps.length > MAX_TOOLTIP_STEPS) md.appendMarkdown(`and ${steps.length - MAX_TOOLTIP_STEPS} more\n\n`);
   const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
   if (where) md.appendMarkdown(`${where}\n\n`);
   if (r.cwd) md.appendMarkdown(`\`${r.cwd}\`\n\n`);
