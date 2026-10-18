@@ -306,7 +306,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   const status = vscode.window.createStatusBarItem("sessionCompass.status", vscode.StatusBarAlignment.Left, 50);
   status.name = "Session Compass";
-  status.command = `${VIEW}.focus`;
 
   let details: vscode.WebviewPanel | undefined;
   let detailsId = "";
@@ -332,6 +331,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (shown) {
       status.text = `$(compass) ${statusText(shown)}`;
       status.tooltip = tooltip(shown, now, focused ? "this tab" : "this window");
+      status.command = { title: "Show or hide the compass panel", command: PANE_COMMAND, arguments: [shown.id] };
       status.show();
     } else {
       status.hide();
