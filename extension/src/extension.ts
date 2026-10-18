@@ -104,7 +104,7 @@ type Node =
   | { kind: "plan"; plan: ParentPlan }
   | { kind: "slice"; slice: Slice }
   | { kind: "session"; row: Row }
-  | { kind: "step"; step: Step };
+  | { kind: "step"; step: Step; row: Row };
 
 const SLICE_ICON: Record<SliceState, vscode.ThemeIcon> = {
   done: new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed")),
@@ -128,6 +128,34 @@ const STEP_MARK: Record<Step["status"], string> = {
 };
 const STEP_WORD: Record<Step["status"], string> = { done: "Done", now: "Now", todo: "To do" };
 const MAX_TOOLTIP_STEPS = 25;
+const SHOW_DETAILS_COMMAND = "sessionCompass.showDetails";
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** Read-only page for one session, drawn in VS Code's own colours. */
+function detailsHtml(r: Row, now: number) {
+  const mark = { done: "&#10003;", now: "&#8594;", todo: "&#9675;" } as const;
+  const steps = stepsOf(r)
+    .map((s) => `<li class="${s.status}"><span class="m">${mark[s.status]}</span>${esc(s.text)}</li>`)
+    .join("");
+  const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<style>
+body{font-family:var(--vscode-font-family);color:var(--vscode-foreground);padding:16px 20px;line-height:1.5}
+h1{font-size:1.4em;margin:0 0 4px}
+.meta{color:var(--vscode-descriptionForeground);margin:0 0 14px}
+code{font-family:var(--vscode-editor-font-family)}
+ul{list-style:none;padding:0;margin:12px 0 0}
+li{padding:4px 0;display:flex;gap:10px}
+.m{width:1.2em;text-align:center;flex:none}
+li.done{color:var(--vscode-descriptionForeground)}
+li.now{font-weight:600;color:var(--vscode-textLink-foreground)}
+</style></head><body>
+<h1>${esc(planOf(r))}</h1>
+<p class="meta">${r.total > 0 ? `${r.done}/${r.total} done` : "no steps yet"}${isStale(r, now) ? " · idle" : ""}<br>${esc(where)}<br><code>${esc(r.cwd || "")}</code><br>Session <code>${esc(r.id)}</code> · updated ${esc(new Date(r.updatedAt).toLocaleTimeString())}</p>
+<ul>${steps}</ul>
+</body></html>`;
+}
 
 class SessionsTree implements vscode.TreeDataProvider<Node> {
   private readonly changed = new vscode.EventEmitter<void>();
@@ -159,7 +187,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
       ];
     }
     if (node.kind === "plan") return openSlices(node.plan).map((slice) => ({ kind: "slice", slice }));
-    if (node.kind === "session") return stepsOf(node.row).map((step) => ({ kind: "step", step }));
+    if (node.kind === "session") return stepsOf(node.row).map((step) => ({ kind: "step", step, row: node.row }));
     return [];
   }
 
@@ -212,6 +240,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
       const item = new vscode.TreeItem(node.step.text, vscode.TreeItemCollapsibleState.None);
       item.iconPath = STEP_ICON[node.step.status];
       item.tooltip = new vscode.MarkdownString(`**${STEP_WORD[node.step.status]}**\n\n`).appendText(node.step.text);
+      item.command = { command: SHOW_DETAILS_COMMAND, title: "Show session details", arguments: [node.row.id] };
       return item;
     }
     const r = node.row;
@@ -233,6 +262,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
         ? new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed"))
         : new vscode.ThemeIcon(focused ? "compass-active" : "compass", focused ? new vscode.ThemeColor("charts.blue") : undefined);
     item.tooltip = tooltip(r, now, focused ? "this tab" : isInWorkspace(r, folders()) ? "this window" : "");
+    item.command = { command: SHOW_DETAILS_COMMAND, title: "Show session details", arguments: [r.id] };
     return item;
   }
 }
@@ -278,8 +308,16 @@ export function activate(context: vscode.ExtensionContext) {
   status.name = "Session Compass";
   status.command = `${VIEW}.focus`;
 
+  let details: vscode.WebviewPanel | undefined;
+  let detailsId = "";
+  const drawDetails = () => {
+    const row = tree.rows.find((x) => x.id === detailsId);
+    if (details && row) details.webview.html = detailsHtml(row, Date.now());
+  };
+
   const update = () => {
     tree.rows = readRows();
+    drawDetails();
     tree.note = readNote();
     tree.plans = readPlans();
     const now = Date.now();
@@ -329,6 +367,22 @@ export function activate(context: vscode.ExtensionContext) {
     view,
     status,
     vscode.commands.registerCommand("sessionCompass.refresh", update),
+    vscode.commands.registerCommand(SHOW_DETAILS_COMMAND, (arg?: unknown) => {
+      const id = sessionIdFromArg(arg);
+      const row = tree.rows.find((x) => x.id === id);
+      if (!row) return;
+      detailsId = row.id;
+      if (!details) {
+        details = vscode.window.createWebviewPanel("sessionCompass.details", "Session", { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {});
+        details.onDidDispose(() => {
+          details = undefined;
+        });
+        context.subscriptions.push(details);
+      }
+      details.title = planOf(row);
+      details.reveal(vscode.ViewColumn.Beside, true);
+      drawDetails();
+    }),
     vscode.commands.registerCommand(COPY_ID_COMMAND, async (arg?: unknown) => {
       const id = sessionIdFromArg(arg);
       if (!id) return;
