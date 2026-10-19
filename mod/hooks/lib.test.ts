@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, paneOpenOf, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagOf, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, stepsFromInput, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, paneOpenOf, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagOf, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -157,4 +157,21 @@ test('paneOpenOf: only an explicit open:true opens the pane', () => {
   expect(paneOpenOf('')).toBe(false)
   expect(paneOpenOf('{"open":"yes"}')).toBe(false)
   expect(paneOpenOf('not json')).toBe(false)
+})
+
+test('stepsFromInput keeps a trimmed detail, drops an empty one, and repairs bad status', () => {
+  const out = stepsFromInput([
+    { text: 'A', status: 'now', detail: '  Reads the worktree state.  ' },
+    { text: 'B', status: 'bogus', detail: '   ' },
+    { text: 'C', status: 'done' },
+    { status: 'todo' },
+    null,
+  ])
+  expect(out).toEqual([
+    { text: 'A', status: 'now', detail: 'Reads the worktree state.' },
+    { text: 'B', status: 'todo' },
+    { text: 'C', status: 'done' },
+  ])
+  expect(stepsFromInput('nope')).toEqual([])
+  expect(stepsFromInput([{ text: 'x', status: 'todo', detail: 'y'.repeat(900) }])[0].detail?.length).toBe(400)
 })

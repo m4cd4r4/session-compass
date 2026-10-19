@@ -1,5 +1,5 @@
 export type StepStatus = 'done' | 'now' | 'todo'
-export type Step = { text: string; status: StepStatus }
+export type Step = { text: string; status: StepStatus; detail?: string }
 export type Compass = {
   repo: string
   branch: string

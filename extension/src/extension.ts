@@ -136,7 +136,7 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 function detailsHtml(r: Row, now: number) {
   const mark = { done: "&#10003;", now: "&#8594;", todo: "&#9675;" } as const;
   const steps = stepsOf(r)
-    .map((s) => `<li class="${s.status}"><span class="m">${mark[s.status]}</span>${esc(s.text)}</li>`)
+    .map((s) => `<li class="${s.status}"><span class="m">${mark[s.status]}</span><span>${esc(s.text)}${s.detail ? `<span class="d">${esc(s.detail)}</span>` : ""}</span></li>`)
     .join("");
   const where = [r.repo, r.where || r.branch].filter(Boolean).join(" · ");
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
@@ -150,6 +150,7 @@ li{padding:4px 0;display:flex;gap:10px}
 .m{width:1.2em;text-align:center;flex:none}
 li.done{color:var(--vscode-descriptionForeground)}
 li.now{font-weight:600;color:var(--vscode-textLink-foreground)}
+.d{display:block;font-weight:400;color:var(--vscode-descriptionForeground);margin-top:2px}
 </style></head><body>
 <h1>${esc(planOf(r))}</h1>
 <p class="meta">${r.total > 0 ? `${r.done}/${r.total} done` : "no steps yet"}${isStale(r, now) ? " · idle" : ""}<br>${esc(where)}<br><code>${esc(r.cwd || "")}</code><br>Session <code>${esc(r.id)}</code> · updated ${esc(new Date(r.updatedAt).toLocaleTimeString())}</p>
@@ -240,6 +241,7 @@ class SessionsTree implements vscode.TreeDataProvider<Node> {
       const item = new vscode.TreeItem(node.step.text, vscode.TreeItemCollapsibleState.None);
       item.iconPath = STEP_ICON[node.step.status];
       item.tooltip = new vscode.MarkdownString(`**${STEP_WORD[node.step.status]}**\n\n`).appendText(node.step.text);
+      if (node.step.detail) item.tooltip.appendMarkdown("\n\n").appendText(node.step.detail);
       item.command = { command: SHOW_DETAILS_COMMAND, title: "Show session details", arguments: [node.row.id] };
       return item;
     }

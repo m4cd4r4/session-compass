@@ -1,7 +1,7 @@
 // Pure logic for the sidebar: no vscode import, so node --test runs it directly.
 
 export type StepStatus = "done" | "now" | "todo";
-export type Step = { text: string; status: StepStatus };
+export type Step = { text: string; status: StepStatus; detail?: string };
 
 /** One file per session in ~/.claude/session-compass/, written by the mod (lib.ts rowOf). */
 export type Row = {
