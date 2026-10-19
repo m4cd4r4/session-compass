@@ -17,7 +17,7 @@ const compass = atom({ plugin: 'session-compass', key: 'compass' } as const, EMP
 
 const GUIDE = [
   'Session compass: the person runs many sessions in parallel and orients by a panel fed by the `compass` tool.',
-  'Call it (one call, no narration about it) when you start a task of 3+ steps, when a step starts or finishes, and when the plan changes.',
+  'Your FIRST tool call on any task of 3+ steps (even one that only plans, audits or investigates) is `compass`; call it again whenever a step starts or finishes and whenever the plan changes. One call, no narration about it.',
   'Give `plan` as a 3-6 word name of the feature or job, and `steps` as the whole list each time, each step under 8 words.',
   'Add a `detail` (1-2 plain sentences) to a step when its label alone does not say what it covers; resend it with the whole list.',
   'Skip it for one-shot questions.',
@@ -120,7 +120,8 @@ export const register: Register = (on, options) => {
       name: 'compass',
       description:
         'Report where this session is so the person can orient across parallel sessions. ' +
-        'Send the plan name and the WHOLE step list each call; status is done, now or todo (at most one now).',
+        'Send the plan name and the WHOLE step list each call; status is done, now or todo (at most one now). ' +
+        'Add an optional `detail` (1-2 plain sentences) to any step whose label alone does not say what it covers.',
       isDeferred: false,
       inputSchema: {
         type: 'object',
