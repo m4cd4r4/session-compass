@@ -283,8 +283,9 @@ function tooltip(r: Row, now: number, scope: string) {
   const md = new vscode.MarkdownString(undefined, true);
   md.appendMarkdown(`**${planOf(r)}**${scope ? ` · ${scope}` : ""}\n\n`);
   if (r.total > 0) md.appendMarkdown(`\`${bar(r.done, r.total)}\` ${r.done}/${r.total}\n\n`);
-  if (r.now) md.appendMarkdown(`Now: ${r.now}\n\n`);
   const steps = stepsOf(r);
+  // The arrow row marks the current step; "Now" is only spoken when the list cut hides it
+  if (r.now && !steps.slice(0, MAX_TOOLTIP_STEPS).some((s) => s.status === "now")) md.appendMarkdown(`Now: ${r.now}\n\n`);
   steps.slice(0, MAX_TOOLTIP_STEPS).forEach((s, i) => {
     md.appendMarkdown(`${STEP_MARK[s.status]} `);
     md.appendText(s.text);
