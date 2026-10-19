@@ -95,13 +95,18 @@ const inside = (path: string, folder: string) => {
   return p === f || p.startsWith(`${f}/`);
 };
 
-/** The newest live row whose cwd sits in one of the window's folders, else one whose repo names a folder. */
+/**
+ * The live row whose cwd sits in one of the window's folders, else one whose repo names a folder.
+ * Only when exactly one row fits: with two or more sessions in a folder this is a guess, and a
+ * guess lets a click toggle the wrong session's pane.
+ */
 export const rowForWorkspace = (rows: readonly Row[], folders: readonly string[], nowMs: number): Row | undefined => {
   const live = visibleRows(rows, nowMs).filter((r) => !isStale(r, nowMs));
-  const byCwd = live.find((r) => r.cwd && folders.some((f) => inside(r.cwd!, f)));
-  if (byCwd) return byCwd;
+  const byCwd = live.filter((r) => r.cwd && folders.some((f) => inside(r.cwd!, f)));
+  if (byCwd.length > 0) return byCwd.length === 1 ? byCwd[0] : undefined;
   const names = folders.map((f) => norm(f).split("/").pop());
-  return live.find((r) => !r.cwd && r.repo && names.includes(r.repo.toLowerCase()));
+  const byRepo = live.filter((r) => !r.cwd && r.repo && names.includes(r.repo.toLowerCase()));
+  return byRepo.length === 1 ? byRepo[0] : undefined;
 };
 
 /**
