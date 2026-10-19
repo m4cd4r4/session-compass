@@ -1,4 +1,4 @@
-import type { Compass, Step } from '../types'
+import type { Compass, Step, StepStatus } from '../types'
 
 export const EMPTY: Compass = { repo: '', branch: '', slug: '', plan: '', topic: '', steps: [], updatedAt: 0 }
 
@@ -70,7 +70,22 @@ export const bar = (done: number, total: number, width = 12) => {
   return '█'.repeat(filled) + '░'.repeat(width - filled)
 }
 
-export const newlyDone = (before: readonly Step[], after: readonly Step[]) =>
+// The tool's `steps` input as clean Steps: text capped, bad status falls to todo, detail kept only when it says something
+export const stepsFromInput = (input: unknown): Step[] =>
+  Array.isArray(input)
+    ? input
+        .filter((s: any) => s && typeof s.text === 'string')
+        .map((s: any): Step => {
+          const step: Step = {
+            text: String(s.text).slice(0, 120),
+            status: (['done', 'now', 'todo'].includes(s.status) ? s.status : 'todo') as StepStatus,
+          }
+          const detail = typeof s.detail === 'string' ? s.detail.trim().slice(0, 400) : ''
+          return detail ? { ...step, detail } : step
+        })
+    : []
+
+export const newlyDone =(before: readonly Step[], after: readonly Step[]) =>
   after.filter(s => s.status === 'done' && !before.some(b => b.text === s.text && b.status === 'done'))
 
 // A prompt only counts as a topic when it says something: "go" does not

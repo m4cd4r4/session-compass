@@ -1,10 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Compass, Step, StepStatus } from '../types'
+import type { Compass, Step } from '../types'
 import {
   EMPTY, NOTE_FILE, PANE_POLL_MS, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, paneOpenOf, restoreFrom, rowToWrite, sessionTitleOf, sessionsReport,
-  stage, statusText, tagOf, title, topicOf, whereFromGit, whereLabel,
+  stage, statusText, stepsFromInput, tagOf, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
 import type { Row } from './lib'
 
@@ -17,8 +17,9 @@ const compass = atom({ plugin: 'session-compass', key: 'compass' } as const, EMP
 
 const GUIDE = [
   'Session compass: the person runs many sessions in parallel and orients by a panel fed by the `compass` tool.',
-  'Call it (one call, no narration about it) when you start a task of 3+ steps, when a step starts or finishes, and when the plan changes.',
+  'Your FIRST tool call on any task of 3+ steps (even one that only plans, audits or investigates) is `compass`; call it again whenever a step starts or finishes and whenever the plan changes. A resumed session (after /clear, a handover or a restart note) counts as a new task: your first tool call is `compass` with the handover\'s next steps. One call, no narration about it.',
   'Give `plan` as a 3-6 word name of the feature or job, and `steps` as the whole list each time, each step under 8 words.',
+  'Add a `detail` (1-2 plain sentences) to a step when its label alone does not say what it covers; resend it with the whole list.',
   'Skip it for one-shot questions.',
 ].join(' ')
 
@@ -119,7 +120,8 @@ export const register: Register = (on, options) => {
       name: 'compass',
       description:
         'Report where this session is so the person can orient across parallel sessions. ' +
-        'Send the plan name and the WHOLE step list each call; status is done, now or todo (at most one now).',
+        'Send the plan name and the WHOLE step list each call; status is done, now or todo (at most one now). ' +
+        'Add an optional `detail` (1-2 plain sentences) to any step whose label alone does not say what it covers.',
       isDeferred: false,
       inputSchema: {
         type: 'object',
@@ -132,6 +134,7 @@ export const register: Register = (on, options) => {
               properties: {
                 text: { type: 'string' },
                 status: { type: 'string', enum: ['done', 'now', 'todo'] },
+                detail: { type: 'string', description: 'Optional, 1-2 plain sentences: what this step covers or its sub-steps. Shown when the person clicks the step.' },
               },
               required: ['text', 'status'],
             },
@@ -183,14 +186,7 @@ export const register: Register = (on, options) => {
   // The cast: the generated tool types list MCP servers' tools, not this mod's own
   on('tool.call', { tool: 'mcp__session-compass__compass' as 'Bash' }, async ($, e: any) => {
     const input = (e.input ?? e) as { plan?: unknown; steps?: unknown }
-    const steps: Step[] = Array.isArray(input.steps)
-      ? input.steps
-          .filter((s: any) => s && typeof s.text === 'string')
-          .map((s: any) => ({
-            text: String(s.text).slice(0, 120),
-            status: (['done', 'now', 'todo'].includes(s.status) ? s.status : 'todo') as StepStatus,
-          }))
-      : []
+    const steps: Step[] = stepsFromInput(input.steps)
     const c = await save($, x => ({
       ...x,
       plan: typeof input.plan === 'string' && input.plan.trim() ? input.plan.trim().slice(0, 80) : x.plan,

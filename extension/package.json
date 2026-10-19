@@ -88,6 +88,11 @@
         "command": "sessionCompass.togglePane",
         "title": "Show or Hide Compass Panel",
         "category": "Session Compass"
+      },
+      {
+        "command": "sessionCompass.showDetails",
+        "title": "Show Session Details",
+        "category": "Session Compass"
       }
     ],
     "configuration": {
@@ -121,6 +126,10 @@
         },
         {
           "command": "sessionCompass.togglePane",
+          "when": "false"
+        },
+        {
+          "command": "sessionCompass.showDetails",
           "when": "false"
         }
       ],

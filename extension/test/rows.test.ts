@@ -55,11 +55,19 @@ test("stepsOf falls back to the now line for rows without steps", () => {
 test("rowForWorkspace matches cwd inside a folder, any slash or case", () => {
   const rows = [
     row({ id: "other", cwd: "C:/work/other", updatedAt: NOW }),
-    row({ id: "mine-old", cwd: "C:\\work\\myapp", updatedAt: NOW - 60000 }),
     row({ id: "mine", cwd: "c:/work/myapp/app", updatedAt: NOW - 1000 }),
   ];
   assert.equal(rowForWorkspace(rows, ["C:\\work\\myapp"], NOW)?.id, "mine");
   assert.equal(rowForWorkspace(rows, ["C:/work/myapp-wt"], NOW), undefined);
+});
+
+test("rowForWorkspace refuses to guess between two live sessions in one folder", () => {
+  const rows = [
+    row({ id: "a", cwd: "C:\\work\\myapp", updatedAt: NOW - 60000 }),
+    row({ id: "b", cwd: "c:/work/myapp/app", updatedAt: NOW - 1000 }),
+  ];
+  assert.equal(rowForWorkspace(rows, ["C:/work/myapp"], NOW), undefined);
+  assert.equal(rowForWorkspace([...rows, row({ id: "c", repo: "myapp" }), row({ id: "d", repo: "myapp" })], ["C:/work/other/myapp"], NOW), undefined);
 });
 
 test("rowForWorkspace falls back to repo name for rows without cwd, never to a stale row", () => {
