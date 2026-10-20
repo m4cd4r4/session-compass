@@ -106,7 +106,8 @@ async function syncPane($: EngineInterface) {
   if (!path) return
   const want = paneOpenOf(String((await $.fs.read(path).catch(() => '')) ?? ''))
   const panes = await $.ui.panes().catch(() => [])
-  const shown = panes.some((p: { id: string }) => p.id === PANE)
+  // Opened by a timer, a pane waits undrawn below 144 columns; one open behind a prompt is placed at any width
+  const shown = panes.some((p: { id: string; isPlaced?: boolean }) => p.id === PANE && p.isPlaced !== false)
   if (want && !shown) await $.ui.open({ id: PANE, title: 'Compass' })
   if (!want && shown) await $.ui.close({ id: PANE })
 }
@@ -172,6 +173,7 @@ export const register: Register = (on, options) => {
 
   on('classic.UserPromptSubmit', async ($, e, next) => {
     const r = await next(e)
+    await syncPane($).catch(() => undefined)
     const topic = topicOf(e.prompt ?? '')
     let c = await refreshWhere($)
     if (topic && !c.topic) c = await save($, x => ({ ...x, topic }))
