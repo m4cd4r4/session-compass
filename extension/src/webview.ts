@@ -113,6 +113,7 @@ function h(tag, props, ...kids) {
   for (const [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
+    else if (k === "style") el.style.cssText = v;
     else if (k === "on") for (const [ev, fn] of Object.entries(v)) el.addEventListener(ev, fn);
     else el.setAttribute(k, v === true ? "" : v);
   }
