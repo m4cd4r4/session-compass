@@ -7,7 +7,7 @@ Two parts, installed separately:
 | Part | What it does | Where |
 |---|---|---|
 | **Mod** (Claude Code plugin) | Gives Claude a `compass` tool, sets the tab title, shows a status line, toasts each finished step, and adds `/sessions` and `/compass` | `mod/` |
-| **VS Code extension** | A sidebar tree of every live session, grouped by repo, with a status bar that follows the active tab | `extension/` |
+| **VS Code extension** | A sidebar of every live session as cards, grouped by repo, with a status bar that follows the active tab | `extension/` |
 
 The extension reads what the mod writes. The mod works without the extension; the extension shows nothing without the mod.
 
@@ -45,6 +45,14 @@ Each open slice is one of: working (worktree on disk), blocked, due (its `gate_d
 ### Restart note
 
 If `restart-note.md` exists in the same folder, a freshly started session (not one continued by `/clear` or a compact) is told its contents and mentions it in the first reply. The sidebar shows it at the top.
+
+## Themes
+
+The sidebar uses your VS Code theme colours, so it follows dark, light and high contrast. Shown with sample data.
+
+| Dark | Light | High contrast |
+|---|---|---|
+| ![Session Compass in a dark theme](docs/img/theme-dark.png) | ![Session Compass in a light theme](docs/img/theme-light.png) | ![Session Compass in a high contrast theme](docs/img/theme-high-contrast.png) |
 
 ## What it reads and sends
 
