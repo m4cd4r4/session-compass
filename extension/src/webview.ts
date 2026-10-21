@@ -99,6 +99,7 @@ const ICONS = {
   panel: "M2.5 3h11v10h-11zM2.5 9.5h11",
   refresh: "M13 8a5 5 0 1 1-1.6-3.7M13 2.5v3h-3",
   check: "M2.5 6.5l2.3 2.3 4.7-5",
+  x: "M4 4l8 8M12 4l-8 8",
 };
 function icon(name) {
   const svg = document.createElementNS(NS, "svg");
@@ -153,7 +154,7 @@ function card(c) {
   const ckey = "c:" + c.id;
   const expanded = expandable && (st.seen.has(ckey) ? st.open.has(ckey) : c.open);
   const acts = c.kind === "session"
-    ? [act("Open details", "open", { type: "details", id: c.id }), act("Copy session ID", "copy", { type: "copyId", id: c.id }), act("Show or hide Compass panel", "panel", { type: "pane", id: c.id })]
+    ? [act("Open details", "open", { type: "details", id: c.id }), act("Copy session ID", "copy", { type: "copyId", id: c.id }), act("Show or hide Compass panel", "panel", { type: "pane", id: c.id }), act("Hide this session", "x", { type: "dismiss", id: c.id })]
     : [];
   const meta = c.total > 0
     ? [segments(c), h("span", { class: "cnt" }, c.done + " of " + c.total), c.held ? h("span", { class: "chip amber" }, c.held + " held") : null, c.state === "here" ? h("span", { class: "chip blue" }, "this tab") : null, c.where ? h("span", { class: "chip", title: c.where }, c.where) : null]

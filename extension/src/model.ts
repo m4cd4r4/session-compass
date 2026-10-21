@@ -1,5 +1,5 @@
 // Pure view model for the webview: no vscode import, so node --test runs it directly.
-import { ago, groupByRepo, isStale, planOf, stepsOf, visibleRows, type Row, type Step } from "./rows.ts";
+import { ago, groupByRepo, isFinished, isStale, planOf, stepsOf, visibleRows, type Dismissed, type Row, type Step } from "./rows.ts";
 import { openSlices, plansForRepo, planOnlyRepos, sliceLabel, type ParentPlan, type SliceState } from "./plans.ts";
 
 export type CardState = "here" | "run" | "idle" | "done" | "held";
@@ -38,20 +38,22 @@ export type ModelInput = {
   note: readonly string[];
   now: number;
   focusedId?: string;
+  dismissed?: Dismissed;
 };
 
 const sessionCard = (r: Row, now: number, focusedId?: string): Card => {
   const stale = isStale(r, now);
   const here = r.id === focusedId && !stale;
   const steps = stepsOf(r);
-  const state: CardState = stale ? "idle" : r.total > 0 && r.done === r.total ? "done" : here ? "here" : "run";
+  // A stale session with work left is paused (its window was probably closed); a stale finished one is just idle
+  const state: CardState = stale ? (isFinished(r) ? "idle" : "held") : isFinished(r) ? "done" : here ? "here" : "run";
   const where = r.where || (r.branch && r.branch !== "main" && r.branch !== "master" ? r.branch : "");
   return {
     id: r.id,
     kind: "session",
     title: planOf(r),
     state,
-    age: stale ? `idle ${ago(now - r.updatedAt)}` : ago(now - r.updatedAt),
+    age: stale ? `${state === "held" ? "paused" : "idle"} ${ago(now - r.updatedAt)}` : ago(now - r.updatedAt),
     done: r.done,
     total: r.total,
     held: 0,
@@ -82,8 +84,8 @@ const planCard = (p: ParentPlan): Card => {
   };
 };
 
-export const buildModel = ({ rows, plans, note, now, focusedId }: ModelInput): ViewModel => {
-  const visible = visibleRows(rows, now);
+export const buildModel = ({ rows, plans, note, now, focusedId, dismissed }: ModelInput): ViewModel => {
+  const visible = visibleRows(rows, now, dismissed);
   const sessionGroups = groupByRepo(visible);
   const repos = [...sessionGroups.map((g) => g.repo), ...planOnlyRepos(plans, sessionGroups.map((g) => g.repo))];
   const groups: GroupModel[] = repos.map((repo) => {
@@ -105,6 +107,7 @@ export type WebMessage =
   | { type: "refresh" }
   | { type: "details"; id: string }
   | { type: "copyId"; id: string }
+  | { type: "dismiss"; id: string }
   | { type: "pane"; id: string }
   | { type: "copyResume"; text: string }
   | { type: "openWorktree"; path: string }
@@ -121,6 +124,7 @@ export const parseMessage = (v: unknown): WebMessage | undefined => {
       return { type: m.type };
     case "details":
     case "copyId":
+    case "dismiss":
     case "pane": {
       const id = str(m.id);
       return id ? { type: m.type, id } : undefined;

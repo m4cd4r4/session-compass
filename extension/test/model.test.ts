@@ -25,12 +25,20 @@ test("buildModel carries the step in progress for a collapsed card, none when id
   assert.equal(idle.now, "");
 });
 
-test("buildModel shows an idle session as idle, never here, even when focused", () => {
-  const m = buildModel(input([row({ id: "a", updatedAt: NOW - STALE_MS })], { focusedId: "a" }));
+test("buildModel shows a stale finished session as idle, never here, even when focused", () => {
+  const m = buildModel(input([row({ id: "a", total: 3, done: 3, updatedAt: NOW - STALE_MS })], { focusedId: "a" }));
   const c = m.groups[0].cards[0];
   assert.equal(c.state, "idle");
   assert.equal(c.open, false);
   assert.match(c.age, /^idle /);
+});
+
+test("buildModel shows a stale unfinished session as held and paused", () => {
+  const m = buildModel(input([row({ id: "a", total: 3, done: 1, updatedAt: NOW - 3 * GONE_MS })], { focusedId: "a" }));
+  const c = m.groups[0].cards[0];
+  assert.equal(c.state, "held");
+  assert.match(c.age, /^paused /);
+  assert.equal(c.open, false);
 });
 
 test("buildModel marks a finished session done", () => {
@@ -60,6 +68,8 @@ test("parseMessage accepts known shapes and drops the rest", () => {
   assert.deepEqual(parseMessage({ type: "details", id: "a" }), { type: "details", id: "a" });
   assert.deepEqual(parseMessage({ type: "copyResume", text: "cmd" }), { type: "copyResume", text: "cmd" });
   assert.deepEqual(parseMessage({ type: "openWorktree", path: "C:/w" }), { type: "openWorktree", path: "C:/w" });
+  assert.deepEqual(parseMessage({ type: "dismiss", id: "a" }), { type: "dismiss", id: "a" });
+  assert.equal(parseMessage({ type: "dismiss" }), undefined);
   assert.equal(parseMessage({ type: "openWorktree" }), undefined);
   assert.equal(parseMessage({ type: "details" }), undefined);
   assert.equal(parseMessage({ type: "copyResume", text: "" }), undefined);

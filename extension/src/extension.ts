@@ -11,7 +11,7 @@ import {
 } from "./plans";
 import {
   bar, COPY_ID_COMMAND, copyIdLink, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, PANE_COMMAND, paneLink, paneOpenOf, planOf,
-  rowForTab, rowForWorkspace,
+  dismissedFrom, rowForTab, rowForWorkspace, type Dismissed,
   sessionIdFromArg, statusText, stepsOf, visibleRows, type Group, type Row, type Step,
 } from "./rows";
 
@@ -55,6 +55,16 @@ function isPaneOpen(id: string) {
 function setPaneOpen(id: string, open: boolean) {
   mkdirSync(join(rowsDir(), "panes"), { recursive: true });
   writeFileSync(paneFlag(id), JSON.stringify({ open }));
+}
+
+const dismissedPath = () => join(rowsDir(), "dismissed.json");
+
+function readDismissed() {
+  try {
+    return dismissedFrom(readFileSync(dismissedPath(), "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 const notePath = () => join(rowsDir(), NOTE_FILE);
@@ -163,6 +173,7 @@ class CompassView implements vscode.WebviewViewProvider {
   rows: Row[] = [];
   note: string[] = [];
   plans: ParentPlan[] = [];
+  dismissed: Dismissed = {};
   /** The session whose tab last had focus in this window; sticky while a file has focus. */
   focusedId: string | undefined;
   view: vscode.WebviewView | undefined;
@@ -184,7 +195,7 @@ class CompassView implements vscode.WebviewViewProvider {
   }
 
   fire() {
-    const model = buildModel({ rows: this.rows, plans: this.plans, note: this.note, now: Date.now(), focusedId: this.focusedId });
+    const model = buildModel({ rows: this.rows, plans: this.plans, note: this.note, now: Date.now(), focusedId: this.focusedId, dismissed: this.dismissed });
     void this.view?.webview.postMessage({ type: "model", model });
   }
 }
@@ -202,6 +213,14 @@ export function activate(context: vscode.ExtensionContext) {
       case "copyId":
         void vscode.commands.executeCommand(COPY_ID_COMMAND, m.id);
         break;
+      case "dismiss": {
+        const row = tree.rows.find((x) => x.id === m.id);
+        if (row) {
+          writeFileSync(dismissedPath(), JSON.stringify({ ...readDismissed(), [row.id]: row.updatedAt }));
+          update();
+        }
+        break;
+      }
       case "pane":
         void vscode.commands.executeCommand(PANE_COMMAND, m.id);
         break;
@@ -232,15 +251,16 @@ export function activate(context: vscode.ExtensionContext) {
     tree.rows = readRows();
     drawDetails();
     tree.note = readNote();
+    tree.dismissed = readDismissed();
     tree.plans = readPlans();
     const now = Date.now();
     // A Claude tab's label is the title the mod set, which its row records
     const tab = rowForTab(tree.rows, vscode.window.tabGroups.activeTabGroup.activeTab?.label ?? "", now);
     if (tab) tree.focusedId = tab.id;
-    const focused = visibleRows(tree.rows, now).find((r) => r.id === tree.focusedId);
+    const focused = visibleRows(tree.rows, now, tree.dismissed).find((r) => r.id === tree.focusedId);
     const shown = focused ?? rowForWorkspace(tree.rows, folders(), now);
     tree.fire();
-    const live = visibleRows(tree.rows, now).filter((r) => !isStale(r, now));
+    const live = visibleRows(tree.rows, now, tree.dismissed).filter((r) => !isStale(r, now));
     if (tree.view) tree.view.badge = live.length > 0 ? { value: live.length, tooltip: `${live.length} live sessions` } : undefined;
     if (shown) {
       status.text = `$(compass) ${statusText(shown)}`;
