@@ -17,6 +17,8 @@ export type Card = {
   total: number;
   held: number;
   where: string;
+  /** The step in progress, shown on a collapsed card; empty when none. */
+  now: string;
   steps: CardStep[];
   /** Expanded on first draw: the session in the focused tab. */
   open: boolean;
@@ -54,6 +56,7 @@ const sessionCard = (r: Row, now: number, focusedId?: string): Card => {
     total: r.total,
     held: 0,
     where,
+    now: stale ? "" : steps.find((s) => s.status === "now")?.text ?? r.now,
     steps: steps.map((s) => ({ status: s.status, text: s.text, detail: s.detail })),
     open: here && steps.length > 0,
   };
@@ -73,6 +76,7 @@ const planCard = (p: ParentPlan): Card => {
     total: p.slices.length,
     held: count("held"),
     where: "",
+    now: "",
     steps: slices.map((s) => ({ status: SLICE_STEP[s.state], text: sliceLabel(s), detail: s.why, resume: s.worktree || s.resume || undefined, worktree: s.worktree || undefined })),
     open: false,
   };

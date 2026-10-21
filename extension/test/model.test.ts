@@ -17,6 +17,14 @@ test("buildModel marks the focused live session here and opens it", () => {
   assert.deepEqual(m.summary, { sessions: 2, here: 1, running: 1, held: 0, idle: 0 });
 });
 
+test("buildModel carries the step in progress for a collapsed card, none when idle", () => {
+  const steps = [{ status: "done" as const, text: "a" }, { status: "now" as const, text: "b" }];
+  const live = buildModel(input([row({ id: "a", total: 2, done: 1, steps })])).groups[0].cards[0];
+  assert.equal(live.now, "b");
+  const idle = buildModel(input([row({ id: "a", total: 2, done: 1, steps, updatedAt: NOW - STALE_MS })])).groups[0].cards[0];
+  assert.equal(idle.now, "");
+});
+
 test("buildModel shows an idle session as idle, never here, even when focused", () => {
   const m = buildModel(input([row({ id: "a", updatedAt: NOW - STALE_MS })], { focusedId: "a" }));
   const c = m.groups[0].cards[0];

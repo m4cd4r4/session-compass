@@ -48,6 +48,7 @@ svg { display: block; }
 .card .acts { grid-column: 3; grid-row: 1; display: none; gap: 2px; justify-self: end; }
 .card:hover .age, .card:focus-within .age { display: none; }
 .card:hover .acts, .card:focus-within .acts { display: flex; }
+.card .nowline { grid-column: 2 / 4; color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .meta { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; color: var(--mute); font-size: 12px; min-width: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
 .dot.g { background: var(--green); } .dot.a { background: var(--amber); } .dot.b { background: var(--blue); } .dot.r { background: var(--red); }
@@ -166,7 +167,8 @@ function card(c) {
     h("span", { class: "t", title: c.title }, expandable ? h("span", { class: "caret" }, "\\u203a") : null, c.title),
     h("span", { class: "age" }, c.age),
     h("span", { class: "acts" }, acts),
-    h("span", { class: "meta" }, meta));
+    h("span", { class: "meta" }, meta),
+    !expanded && c.now ? h("span", { class: "nowline", title: c.now }, "\\u2192 " + c.now) : null);
   return [head, expanded ? h("div", { class: "stepsx" }, c.steps.map((s, i) => stepRow(c, s, i))) : null];
 }
 function draw() {
