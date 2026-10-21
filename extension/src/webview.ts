@@ -162,7 +162,7 @@ function card(c) {
   const head = h("div", {
     class: "card" + (c.state === "here" ? " sel" : ""), tabindex: 0, "aria-expanded": expandable ? String(expanded) : null,
     on: { click: () => { if (expandable) flip(ckey, expanded); else if (c.kind === "session") post({ type: "details", id: c.id }); },
-      keydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); head.click(); } } },
+      keydown: (e) => { if (e.target === head && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); head.click(); } } },
   },
     h("span", { class: "dot " + DOT[c.state] }),
     h("span", { class: "t", title: c.title }, expandable ? h("span", { class: "caret" }, "\\u203a") : null, c.title),
