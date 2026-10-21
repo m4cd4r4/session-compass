@@ -4,7 +4,7 @@ import { openSlices, plansForRepo, planOnlyRepos, sliceLabel, type ParentPlan, t
 
 export type CardState = "here" | "run" | "idle" | "done" | "held";
 
-export type CardStep = { status: Step["status"]; text: string; detail?: string; resume?: string };
+export type CardStep = { status: Step["status"]; text: string; detail?: string; resume?: string; worktree?: string };
 
 export type Card = {
   id: string;
@@ -73,7 +73,7 @@ const planCard = (p: ParentPlan): Card => {
     total: p.slices.length,
     held: count("held"),
     where: "",
-    steps: slices.map((s) => ({ status: SLICE_STEP[s.state], text: sliceLabel(s), detail: s.why, resume: s.worktree || s.resume || undefined })),
+    steps: slices.map((s) => ({ status: SLICE_STEP[s.state], text: sliceLabel(s), detail: s.why, resume: s.worktree || s.resume || undefined, worktree: s.worktree || undefined })),
     open: false,
   };
 };
@@ -103,6 +103,7 @@ export type WebMessage =
   | { type: "copyId"; id: string }
   | { type: "pane"; id: string }
   | { type: "copyResume"; text: string }
+  | { type: "openWorktree"; path: string }
   | { type: "openNote" };
 
 export const parseMessage = (v: unknown): WebMessage | undefined => {
@@ -123,6 +124,10 @@ export const parseMessage = (v: unknown): WebMessage | undefined => {
     case "copyResume": {
       const text = str(m.text);
       return text ? { type: "copyResume", text } : undefined;
+    }
+    case "openWorktree": {
+      const path = str((m as { path?: unknown }).path);
+      return path ? { type: "openWorktree", path } : undefined;
     }
     default:
       return undefined;

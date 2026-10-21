@@ -208,6 +208,9 @@ export function activate(context: vscode.ExtensionContext) {
       case "copyResume":
         void vscode.commands.executeCommand(COPY_RESUME_COMMAND, m.text);
         break;
+      case "openWorktree":
+        void vscode.commands.executeCommand(OPEN_WORKTREE_COMMAND, m.path);
+        break;
       case "openNote":
         void vscode.commands.executeCommand("vscode.open", vscode.Uri.file(notePath()));
         break;

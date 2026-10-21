@@ -36,10 +36,23 @@ test("buildModel gives a plan with no session its own repo group", () => {
   assert.deepEqual(m.groups.map((g) => g.repo).sort(), ["other", "r"]);
 });
 
+test("buildModel gives a working slice both a copyable resume and an open-worktree path", () => {
+  const plan: ParentPlan = { name: "Big job", repo: "r", slices: [
+    { slug: "a", label: "a", wave: "1", state: "working", why: "building", resume: "I:/wt/a", worktree: "I:/wt/a" },
+    { slug: "b", label: "b", wave: "1", state: "ready", why: "next", resume: "mint b", worktree: "" },
+  ] };
+  const steps = buildModel(input([row({ repo: "r" })], { plans: [plan] })).groups[0].cards.find((c) => c.kind === "plan")!.steps;
+  assert.equal(steps[0].worktree, "I:/wt/a");
+  assert.equal(steps[1].worktree, undefined);
+  assert.equal(steps[1].resume, "mint b");
+});
+
 test("parseMessage accepts known shapes and drops the rest", () => {
   assert.deepEqual(parseMessage({ type: "ready" }), { type: "ready" });
   assert.deepEqual(parseMessage({ type: "details", id: "a" }), { type: "details", id: "a" });
   assert.deepEqual(parseMessage({ type: "copyResume", text: "cmd" }), { type: "copyResume", text: "cmd" });
+  assert.deepEqual(parseMessage({ type: "openWorktree", path: "C:/w" }), { type: "openWorktree", path: "C:/w" });
+  assert.equal(parseMessage({ type: "openWorktree" }), undefined);
   assert.equal(parseMessage({ type: "details" }), undefined);
   assert.equal(parseMessage({ type: "copyResume", text: "" }), undefined);
   assert.equal(parseMessage({ type: "nope" }), undefined);

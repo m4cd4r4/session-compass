@@ -145,7 +145,7 @@ function stepRow(c, s, i) {
     on: { click: () => { if (s.detail) flip(key, open); else if (s.resume) post({ type: "copyResume", text: s.resume }); } },
   },
     h("div", { class: "s-row" }, h("span", { class: "s-ic" }, mark), h("span", { class: "s-t", title: s.text }, s.text), s.detail ? h("span", { class: "s-more" }, "Details") : null),
-    s.detail ? h("div", { class: "detail" }, s.detail, s.resume ? h("div", { style: "margin-top:6px" }, h("button", { class: "chip", on: { click: (e) => { e.stopPropagation(); post({ type: "copyResume", text: s.resume }); } } }, "Copy resume")) : null) : null);
+    s.detail ? h("div", { class: "detail" }, s.detail, s.resume ? h("div", { style: "margin-top:6px;display:flex;gap:6px" }, h("button", { class: "chip", on: { click: (e) => { e.stopPropagation(); post({ type: "copyResume", text: s.resume }); } } }, "Copy resume"), s.worktree ? h("button", { class: "chip", on: { click: (e) => { e.stopPropagation(); post({ type: "openWorktree", path: s.worktree }); } } }, "Open worktree") : null) : null) : null);
 }
 function card(c) {
   const expandable = c.steps.length > 0;
