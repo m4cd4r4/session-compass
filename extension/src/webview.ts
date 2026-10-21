@@ -173,7 +173,24 @@ function card(c) {
     !expanded && c.now ? h("span", { class: "nowline", title: c.now }, "\\u2192 " + c.now) : null);
   return [head, expanded ? h("div", { class: "stepsx" }, c.steps.map((s, i) => stepRow(c, s, i))) : null];
 }
+const FOCUSABLE = "[tabindex],button";
+function sigOf(el) {
+  const box = el.closest(".card,.grp,.sec,.step");
+  const label = box ? (box.querySelector(".t,.s-t,.grow") || box).textContent.slice(0, 80) : "";
+  return el.className + "|" + (el.title || "") + "|" + (box ? "" : el.textContent.slice(0, 20)) + "|" + label;
+}
+// The model is re-posted on every tick and file change, so a redraw would drop keyboard focus: remember which control had it and focus its twin.
 function draw() {
+  const root = document.getElementById("root"), a = document.activeElement;
+  let key = null;
+  if (a && root.contains(a)) { const sig = sigOf(a); key = { sig, n: [...root.querySelectorAll(FOCUSABLE)].filter((x) => sigOf(x) === sig).indexOf(a) }; }
+  render();
+  if (!key) return;
+  const hits = [...root.querySelectorAll(FOCUSABLE)].filter((x) => sigOf(x) === key.sig);
+  const target = hits[key.n] || hits[0];
+  if (target) target.focus({ preventScroll: true });
+}
+function render() {
   const m = st.model; if (!m) return;
   const f = st.filter;
   const keep = (c) => f === "all" || (f === "active" ? c.state === "run" || c.state === "here" : c.state === "held");
