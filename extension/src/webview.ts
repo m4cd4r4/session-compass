@@ -32,7 +32,7 @@ svg { display: block; }
 .summary { margin: 8px 12px; padding: 10px 12px; background: var(--surf); border-radius: 10px; }
 .s-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .s-top b { font-size: 18px; font-weight: 600; }
-.stack { display: flex; height: 6px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--line); }
+.stack { display: flex; height: 6px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surf2); }
 .stack i { display: block; height: 100%; }
 .legend { display: flex; gap: 12px; margin-top: 8px; color: var(--mute); font-size: 12px; flex-wrap: wrap; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
@@ -55,7 +55,7 @@ svg { display: block; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
 @media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
 .steps { display: flex; gap: 3px; }
-.steps i { width: 16px; height: 4px; border-radius: 2px; background: var(--line); }
+.steps i { width: 16px; height: 4px; border-radius: 2px; background: var(--surf2); }
 .steps i.on { background: var(--accent); }
 .steps i.hold { background: var(--amber); }
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--surf2); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -179,7 +179,7 @@ function draw() {
   const leg = (n, cls, label) => n > 0 ? h("span", {}, h("span", { class: "dot " + cls }), label + " " + n) : null;
   root.append(h("div", { class: "summary" },
     h("div", { class: "s-top" }, h("span", {}, h("b", {}, s.sessions), " sessions"), s.here ? h("span", { class: "pill blue" }, s.here + " here") : null),
-    h("div", { class: "stack" }, seg(s.here, "var(--blue)"), seg(s.running, "var(--green)"), seg(s.held, "var(--amber)"), h("i", { style: "flex:1;background:var(--line)" })),
+    h("div", { class: "stack" }, seg(s.here, "var(--blue)"), seg(s.running, "var(--green)"), seg(s.held, "var(--amber)"), h("i", { style: "flex:1;background:var(--surf2)" })),
     h("div", { class: "legend" }, leg(s.here, "b", "here"), leg(s.running, "g", "running"), leg(s.held, "a", "held"), leg(s.idle, "", "idle"))));
   root.append(h("div", { class: "seg", role: "group", "aria-label": "Filter" },
     ["all", "active", "held"].map((k) => h("button", { "aria-pressed": String(f === k), on: { click: () => { st.filter = k; persist(); draw(); } } }, k[0].toUpperCase() + k.slice(1)))));
