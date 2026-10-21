@@ -41,6 +41,18 @@ test("buildModel shows a stale unfinished session as held and paused", () => {
   assert.equal(c.open, false);
 });
 
+test("buildModel shows a stale session with no steps as idle, not paused", () => {
+  const c = buildModel(input([row({ id: "a", total: 0, updatedAt: NOW - 3 * STALE_MS })])).groups[0].cards[0];
+  assert.equal(c.state, "idle");
+});
+
+test("buildModel summary counts session cards only, plans excluded", () => {
+  const plan: ParentPlan = { name: "Big", repo: "r", slices: [{ name: "s", state: "held" } as never] };
+  const m = buildModel(input([row({ id: "a" })], { plans: [plan] }));
+  assert.equal(m.summary.sessions, 1);
+  assert.ok(m.summary.held + m.summary.running + m.summary.here + m.summary.idle <= 1);
+});
+
 test("buildModel marks a finished session done", () => {
   const m = buildModel(input([row({ total: 3, done: 3 })]));
   assert.equal(m.groups[0].cards[0].state, "done");

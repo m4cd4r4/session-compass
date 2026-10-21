@@ -36,6 +36,9 @@ export const isStale = (r: Row, nowMs: number) => nowMs - r.updatedAt >= STALE_M
 
 export const isFinished = (r: Row) => r.total > 0 && r.done === r.total;
 
+/** Has a step list with work left. A session with no steps yet is never paused: it drops at GONE_MS like a finished one. */
+export const hasWorkLeft = (r: Row) => r.total > 0 && r.done < r.total;
+
 /** Hidden by hand: session id to the updatedAt it was hidden at, so a session that updates again comes back. */
 export type Dismissed = Record<string, number>;
 
@@ -60,7 +63,7 @@ export const visibleRows = (rows: readonly Row[], nowMs: number, dismissed: Dism
       (r) =>
         !r.ended &&
         dismissed[r.id] !== r.updatedAt &&
-        nowMs - r.updatedAt < (isFinished(r) ? GONE_MS : PARKED_MS) &&
+        nowMs - r.updatedAt < (hasWorkLeft(r) ? PARKED_MS : GONE_MS) &&
         (r.plan || r.total > 0),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);

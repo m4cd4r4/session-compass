@@ -1,5 +1,5 @@
 // Pure view model for the webview: no vscode import, so node --test runs it directly.
-import { ago, groupByRepo, isFinished, isStale, planOf, stepsOf, visibleRows, type Dismissed, type Row, type Step } from "./rows.ts";
+import { ago, groupByRepo, hasWorkLeft, isFinished, isStale, planOf, stepsOf, visibleRows, type Dismissed, type Row, type Step } from "./rows.ts";
 import { openSlices, plansForRepo, planOnlyRepos, sliceLabel, type ParentPlan, type SliceState } from "./plans.ts";
 
 export type CardState = "here" | "run" | "idle" | "done" | "held";
@@ -46,7 +46,7 @@ const sessionCard = (r: Row, now: number, focusedId?: string): Card => {
   const here = r.id === focusedId && !stale;
   const steps = stepsOf(r);
   // A stale session with work left is paused (its window was probably closed); a stale finished one is just idle
-  const state: CardState = stale ? (isFinished(r) ? "idle" : "held") : isFinished(r) ? "done" : here ? "here" : "run";
+  const state: CardState = stale ? (hasWorkLeft(r) ? "held" : "idle") : isFinished(r) ? "done" : here ? "here" : "run";
   const where = r.where || (r.branch && r.branch !== "main" && r.branch !== "master" ? r.branch : "");
   return {
     id: r.id,
@@ -93,9 +93,10 @@ export const buildModel = ({ rows, plans, note, now, focusedId, dismissed }: Mod
     return { repo, cards: [...plansForRepo(plans, repo).map(planCard), ...rs.map((r) => sessionCard(r, now, focusedId))] };
   });
   const cards = groups.flatMap((g) => g.cards);
-  const count = (s: CardState) => cards.filter((c) => c.state === s).length;
+  const sessionCards = cards.filter((c) => c.kind === "session");
+  const count = (s: CardState) => sessionCards.filter((c) => c.state === s).length;
   return {
-    summary: { sessions: cards.filter((c) => c.kind === "session").length, here: count("here"), running: count("run"), held: count("held"), idle: count("idle") },
+    summary: { sessions: sessionCards.length, here: count("here"), running: count("run"), held: count("held"), idle: count("idle") },
     groups,
     note: [...note],
   };

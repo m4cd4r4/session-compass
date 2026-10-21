@@ -27,6 +27,10 @@ test("visibleRows keeps an unfinished row until PARKED_MS, a finished one only u
   assert.equal(visibleRows([row({ id: "f", total: 3, done: 3, updatedAt: NOW - GONE_MS })], NOW).length, 0);
 });
 
+test("visibleRows drops a day-old row that has no steps, even though it is unfinished", () => {
+  assert.equal(visibleRows([row({ id: "n", total: 0, updatedAt: NOW - GONE_MS })], NOW).length, 0);
+});
+
 test("visibleRows hides a dismissed row until its updatedAt changes", () => {
   const r = row({ id: "d", updatedAt: NOW - 1000 });
   assert.equal(visibleRows([r], NOW, { d: r.updatedAt }).length, 0);
