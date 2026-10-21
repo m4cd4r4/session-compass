@@ -4,7 +4,7 @@ import { openSlices, plansForRepo, planOnlyRepos, sliceLabel, type ParentPlan, t
 
 export type CardState = "here" | "run" | "idle" | "done" | "held";
 
-export type CardStep = { status: Step["status"]; text: string; detail?: string; resume?: string; worktree?: string };
+export type CardStep = { status: Step["status"] | "blocked"; text: string; detail?: string; resume?: string; worktree?: string };
 
 export type Card = {
   id: string;
@@ -30,7 +30,7 @@ export type Summary = { sessions: number; here: number; running: number; held: n
 
 export type ViewModel = { summary: Summary; groups: GroupModel[]; note: string[] };
 
-const SLICE_STEP: Record<SliceState, CardStep["status"]> = { done: "done", working: "now", blocked: "now", due: "todo", held: "todo", ready: "todo" };
+const SLICE_STEP: Record<SliceState, CardStep["status"]> = { done: "done", working: "now", blocked: "blocked", due: "todo", held: "todo", ready: "todo" };
 
 export type ModelInput = {
   rows: readonly Row[];
@@ -67,7 +67,7 @@ const sessionCard = (r: Row, now: number, focusedId?: string): Card => {
 const planCard = (p: ParentPlan): Card => {
   const slices = openSlices(p);
   const count = (s: SliceState) => p.slices.filter((x) => x.state === s).length;
-  const working = count("working") + count("blocked");
+  const working = count("working");
   return {
     id: `plan:${p.repo}:${p.name}`,
     kind: "plan",

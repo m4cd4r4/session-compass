@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, watch, writeFileSync, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -64,6 +64,19 @@ function readDismissed() {
     return dismissedFrom(readFileSync(dismissedPath(), "utf8"));
   } catch {
     return {};
+  }
+}
+
+/** Adds one hidden session, drops entries for sessions that no longer have a row, and swaps the file in whole so a crash or a second window never leaves half a file. */
+function saveDismissed(id: string, updatedAt: number, liveIds: readonly string[]) {
+  const live = new Set(liveIds);
+  const next = Object.fromEntries(Object.entries({ ...readDismissed(), [id]: updatedAt }).filter(([k]) => live.has(k)));
+  const tmp = `${dismissedPath()}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tmp, JSON.stringify(next));
+    renameSync(tmp, dismissedPath());
+  } catch (e) {
+    void vscode.window.showWarningMessage(`Session Compass could not hide that session: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 
@@ -216,7 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
       case "dismiss": {
         const row = tree.rows.find((x) => x.id === m.id);
         if (row) {
-          writeFileSync(dismissedPath(), JSON.stringify({ ...readDismissed(), [row.id]: row.updatedAt }));
+          saveDismissed(row.id, row.updatedAt, tree.rows.map((x) => x.id));
           update();
         }
         break;

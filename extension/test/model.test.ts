@@ -53,6 +53,13 @@ test("buildModel summary counts session cards only, plans excluded", () => {
   assert.ok(m.summary.held + m.summary.running + m.summary.here + m.summary.idle <= 1);
 });
 
+test("buildModel shows a blocked slice as blocked, and a plan with only blocked slices as held", () => {
+  const plan: ParentPlan = { name: "Big", repo: "r", slices: [{ name: "a", slug: "a", state: "blocked" } as never, { name: "b", slug: "b", state: "done" } as never] };
+  const card = buildModel(input([], { plans: [plan] })).groups[0].cards[0];
+  assert.equal(card.state, "held");
+  assert.equal(card.steps[0].status, "blocked");
+});
+
 test("buildModel marks a finished session done", () => {
   const m = buildModel(input([row({ total: 3, done: 3 })]));
   assert.equal(m.groups[0].cards[0].state, "done");

@@ -141,6 +141,7 @@ function stepRow(c, s, i) {
   const open = st.seen.has(key) ? st.open.has(key) : !!(s.status === "now" && s.detail && c.kind === "session");
   const mark = s.status === "done" ? (() => { const w = h("span", { style: "color:var(--green)" }); w.append(icon("check")); return w; })()
     : s.status === "now" ? h("span", { class: "dot b live" })
+    : s.status === "blocked" ? h("span", { class: "dot r", title: "Blocked" })
     : (() => { const w = h("span", { style: "color:var(--faint)" }); const svg = document.createElementNS(NS, "svg"); svg.setAttribute("width", 12); svg.setAttribute("height", 12); svg.setAttribute("viewBox", "0 0 12 12"); svg.setAttribute("fill", "none"); svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", 1.4); const ci = document.createElementNS(NS, "circle"); ci.setAttribute("cx", 6); ci.setAttribute("cy", 6); ci.setAttribute("r", 4); svg.append(ci); w.append(svg); return w; })();
   return h("div", {
     class: "step " + s.status + (open ? " open" : ""), "data-d": s.detail ? true : null, tabindex: s.detail ? 0 : null,
