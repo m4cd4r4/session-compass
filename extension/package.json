@@ -52,16 +52,11 @@
         {
           "id": "sessionCompass.sessions",
           "name": "Sessions",
-          "contextualTitle": "Session Compass"
+          "contextualTitle": "Session Compass",
+          "type": "webview"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "sessionCompass.sessions",
-        "contents": "No live Claude Code sessions recorded.\n\nA session appears here once it calls the compass tool (the session-compass mod adds it)."
-      }
-    ],
     "commands": [
       {
         "command": "sessionCompass.refresh",
@@ -131,20 +126,6 @@
         {
           "command": "sessionCompass.showDetails",
           "when": "false"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "sessionCompass.copySessionId",
-          "when": "view == sessionCompass.sessions && viewItem == session"
-        },
-        {
-          "command": "sessionCompass.copyResume",
-          "when": "view == sessionCompass.sessions && viewItem =~ /^slice-(resume|worktree)$/"
-        },
-        {
-          "command": "sessionCompass.openWorktree",
-          "when": "view == sessionCompass.sessions && viewItem == slice-worktree"
         }
       ],
       "view/title": [

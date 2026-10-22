@@ -1,14 +1,17 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, watch, writeFileSync, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
+import { buildModel, parseMessage, type WebMessage } from "./model";
+import { pageHtml } from "./webview";
 import {
-  COPY_RESUME_COMMAND, DEFAULT_RESUME, OPEN_WORKTREE_COMMAND, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg,
+  COPY_RESUME_COMMAND, DEFAULT_RESUME, isOfferedByPlans, OPEN_WORKTREE_COMMAND, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg,
   sliceDescription, sliceLabel, worktreeFromArg, type ParentPlan, type RegistryEntry, type Slice, type SliceState,
 } from "./plans";
 import {
   bar, COPY_ID_COMMAND, copyIdLink, description, groupByRepo, isInWorkspace, isRow, isStale, NOTE_FILE, noteLines, PANE_COMMAND, paneLink, paneOpenOf, planOf,
-  rowForTab, rowForWorkspace,
+  dismissedFrom, rowForTab, rowForWorkspace, type Dismissed,
   sessionIdFromArg, statusText, stepsOf, visibleRows, type Group, type Row, type Step,
 } from "./rows";
 
@@ -54,6 +57,29 @@ function setPaneOpen(id: string, open: boolean) {
   writeFileSync(paneFlag(id), JSON.stringify({ open }));
 }
 
+const dismissedPath = () => join(rowsDir(), "dismissed.json");
+
+function readDismissed() {
+  try {
+    return dismissedFrom(readFileSync(dismissedPath(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+/** Adds one hidden session, drops entries for sessions that no longer have a row, and swaps the file in whole so a crash or a second window never leaves half a file. */
+function saveDismissed(id: string, updatedAt: number, liveIds: readonly string[]) {
+  const live = new Set(liveIds);
+  const next = Object.fromEntries(Object.entries({ ...readDismissed(), [id]: updatedAt }).filter(([k]) => live.has(k)));
+  const tmp = `${dismissedPath()}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tmp, JSON.stringify(next));
+    renameSync(tmp, dismissedPath());
+  } catch (e) {
+    void vscode.window.showWarningMessage(`Session Compass could not hide that session: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 const notePath = () => join(rowsDir(), NOTE_FILE);
 
 function readNote(): string[] {
@@ -97,36 +123,11 @@ function readPlans(): ParentPlan[] {
   return plansFromRegistry(readRegistry(), { exists: existsSync, resumeCommand });
 }
 
-type Node =
-  | { kind: "note"; lines: string[] }
-  | { kind: "noteLine"; text: string }
-  | { kind: "repo"; group: Group }
-  | { kind: "plan"; plan: ParentPlan }
-  | { kind: "slice"; slice: Slice }
-  | { kind: "session"; row: Row }
-  | { kind: "step"; step: Step; row: Row };
-
-const SLICE_ICON: Record<SliceState, vscode.ThemeIcon> = {
-  done: new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed")),
-  working: new vscode.ThemeIcon("play-circle", new vscode.ThemeColor("charts.blue")),
-  blocked: new vscode.ThemeIcon("error", new vscode.ThemeColor("charts.red")),
-  due: new vscode.ThemeIcon("bell-dot", new vscode.ThemeColor("charts.yellow")),
-  held: new vscode.ThemeIcon("lock", new vscode.ThemeColor("disabledForeground")),
-  ready: new vscode.ThemeIcon("circle-large-outline"),
-};
-
-const STEP_ICON: Record<Step["status"], vscode.ThemeIcon> = {
-  done: new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed")),
-  now: new vscode.ThemeIcon("arrow-right", new vscode.ThemeColor("charts.blue")),
-  todo: new vscode.ThemeIcon("circle-large-outline", new vscode.ThemeColor("disabledForeground")),
-};
-
 const STEP_MARK: Record<Step["status"], string> = {
   done: "$(pass-filled)",
   now: "$(arrow-right)",
   todo: "$(circle-large-outline)",
 };
-const STEP_WORD: Record<Step["status"], string> = { done: "Done", now: "Now", todo: "To do" };
 const MAX_TOOLTIP_STEPS = 25;
 const SHOW_DETAILS_COMMAND = "sessionCompass.showDetails";
 
@@ -158,129 +159,6 @@ li.now{font-weight:600;color:var(--vscode-textLink-foreground)}
 </body></html>`;
 }
 
-class SessionsTree implements vscode.TreeDataProvider<Node> {
-  private readonly changed = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this.changed.event;
-  rows: Row[] = [];
-  note: string[] = [];
-  plans: ParentPlan[] = [];
-  /** The session whose tab last had focus in this window; sticky while a file has focus. */
-  focusedId: string | undefined;
-
-  fire() {
-    this.changed.fire();
-  }
-
-  getChildren(node?: Node): Node[] {
-    const now = Date.now();
-    if (!node) {
-      const sessionGroups = groupByRepo(visibleRows(this.rows, now));
-      // A plan stays reachable when no session is running in its repo: its repo gets a group of its own
-      const planGroups = planOnlyRepos(this.plans, sessionGroups.map((g) => g.repo)).map((repo) => ({ repo, rows: [] }));
-      const groups: Node[] = [...sessionGroups, ...planGroups].map((group) => ({ kind: "repo", group }));
-      return this.note.length > 0 ? [{ kind: "note", lines: this.note }, ...groups] : groups;
-    }
-    if (node.kind === "note") return node.lines.map((text) => ({ kind: "noteLine", text }));
-    if (node.kind === "repo") {
-      return [
-        ...plansForRepo(this.plans, node.group.repo).map((plan): Node => ({ kind: "plan", plan })),
-        ...node.group.rows.map((row): Node => ({ kind: "session", row })),
-      ];
-    }
-    if (node.kind === "plan") return openSlices(node.plan).map((slice) => ({ kind: "slice", slice }));
-    if (node.kind === "session") return stepsOf(node.row).map((step) => ({ kind: "step", step, row: node.row }));
-    return [];
-  }
-
-  getTreeItem(node: Node): vscode.TreeItem {
-    const now = Date.now();
-    const openNote = { command: "vscode.open", title: "Open restart note", arguments: [vscode.Uri.file(notePath())] };
-    if (node.kind === "note") {
-      const item = new vscode.TreeItem("Restart note", vscode.TreeItemCollapsibleState.Expanded);
-      item.id = "note";
-      item.iconPath = new vscode.ThemeIcon("note", new vscode.ThemeColor("charts.yellow"));
-      item.description = `${node.lines.length}`;
-      item.tooltip = "Where to start after restarting. Ask Claude to add or clear items.";
-      item.command = openNote;
-      return item;
-    }
-    if (node.kind === "noteLine") {
-      const item = new vscode.TreeItem(node.text, vscode.TreeItemCollapsibleState.None);
-      item.iconPath = new vscode.ThemeIcon("circle-small-filled", new vscode.ThemeColor("charts.yellow"));
-      item.tooltip = node.text;
-      item.command = openNote;
-      return item;
-    }
-    if (node.kind === "repo") {
-      const item = new vscode.TreeItem(node.group.repo, vscode.TreeItemCollapsibleState.Expanded);
-      item.id = `repo:${node.group.repo}`;
-      item.iconPath = new vscode.ThemeIcon("repo");
-      item.description = node.group.rows.length > 0 ? `${node.group.rows.length}` : "no live session";
-      return item;
-    }
-    if (node.kind === "plan") {
-      const p = node.plan;
-      const item = new vscode.TreeItem(p.name, vscode.TreeItemCollapsibleState.Expanded);
-      item.id = `plan:${p.repo}:${p.name}`;
-      item.iconPath = new vscode.ThemeIcon("milestone");
-      item.description = planSummary(p);
-      item.tooltip = `Parent plan ${p.name} (${planSummary(p)}), from the worktree registry. Click a slice to copy its resume command.`;
-      return item;
-    }
-    if (node.kind === "slice") {
-      const s = node.slice;
-      const item = new vscode.TreeItem(sliceLabel(s), vscode.TreeItemCollapsibleState.None);
-      item.iconPath = SLICE_ICON[s.state];
-      item.description = sliceDescription(s);
-      item.contextValue = s.worktree ? "slice-worktree" : s.resume ? "slice-resume" : "slice";
-      item.tooltip = sliceTooltip(s);
-      if (s.resume) item.command = { command: COPY_RESUME_COMMAND, title: "Copy resume command", arguments: [s.resume] };
-      return item;
-    }
-    if (node.kind === "step") {
-      const item = new vscode.TreeItem(node.step.text, vscode.TreeItemCollapsibleState.None);
-      item.iconPath = STEP_ICON[node.step.status];
-      item.tooltip = new vscode.MarkdownString(`**${STEP_WORD[node.step.status]}**\n\n`).appendText(node.step.text);
-      if (node.step.detail) item.tooltip.appendMarkdown("\n\n").appendText(node.step.detail);
-      item.command = { command: SHOW_DETAILS_COMMAND, title: "Show session details", arguments: [node.row.id] };
-      return item;
-    }
-    const r = node.row;
-    const stale = isStale(r, now);
-    const focused = r.id === this.focusedId;
-    const hasSteps = stepsOf(r).length > 0;
-    const item = new vscode.TreeItem(
-      planOf(r),
-      hasSteps
-        ? focused && !stale ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed
-        : vscode.TreeItemCollapsibleState.None,
-    );
-    item.id = `session:${r.id}`;
-    item.contextValue = "session";
-    item.description = description(r, now);
-    item.iconPath = stale
-      ? new vscode.ThemeIcon("debug-pause", new vscode.ThemeColor("disabledForeground"))
-      : r.total > 0 && r.done === r.total
-        ? new vscode.ThemeIcon("pass-filled", new vscode.ThemeColor("testing.iconPassed"))
-        : new vscode.ThemeIcon(focused ? "compass-active" : "compass", focused ? new vscode.ThemeColor("charts.blue") : undefined);
-    item.tooltip = tooltip(r, now, focused ? "this tab" : isInWorkspace(r, folders()) ? "this window" : "");
-    item.command = { command: SHOW_DETAILS_COMMAND, title: "Show session details", arguments: [r.id] };
-    return item;
-  }
-}
-
-function sliceTooltip(s: Slice) {
-  const md = new vscode.MarkdownString();
-  md.appendMarkdown(`**${sliceLabel(s)}** · ${s.state}${s.wave ? ` · wave ${s.wave}` : ""}\n\n`);
-  md.appendText(s.why);
-  md.appendMarkdown("\n\n");
-  if (s.resume) {
-    md.appendMarkdown(s.worktree ? "Click to copy the worktree path:\n\n" : "Click to copy the resume command:\n\n");
-    md.appendCodeblock(s.resume, "sh");
-  }
-  return md;
-}
-
 function tooltip(r: Row, now: number, scope: string) {
   const md = new vscode.MarkdownString(undefined, true);
   md.appendMarkdown(`**${planOf(r)}**${scope ? ` · ${scope}` : ""}\n\n`);
@@ -303,9 +181,74 @@ function tooltip(r: Row, now: number, scope: string) {
   return md;
 }
 
+/** The Compass view: a webview fed a pure view model; the page posts messages back. */
+class CompassView implements vscode.WebviewViewProvider {
+  rows: Row[] = [];
+  note: string[] = [];
+  plans: ParentPlan[] = [];
+  dismissed: Dismissed = {};
+  /** The session whose tab last had focus in this window; sticky while a file has focus. */
+  focusedId: string | undefined;
+  view: vscode.WebviewView | undefined;
+
+  constructor(private readonly onMessage: (m: WebMessage) => void) {}
+
+  resolveWebviewView(view: vscode.WebviewView) {
+    this.view = view;
+    view.webview.options = { enableScripts: true };
+    const nonce = randomBytes(16).toString("hex");
+    view.webview.html = pageHtml(nonce, view.webview.cspSource);
+    view.webview.onDidReceiveMessage((v: unknown) => {
+      const m = parseMessage(v);
+      if (m) this.onMessage(m);
+    });
+    view.onDidDispose(() => {
+      if (this.view === view) this.view = undefined;
+    });
+  }
+
+  fire() {
+    const model = buildModel({ rows: this.rows, plans: this.plans, note: this.note, now: Date.now(), focusedId: this.focusedId, dismissed: this.dismissed });
+    void this.view?.webview.postMessage({ type: "model", model });
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
-  const tree = new SessionsTree();
-  const view = vscode.window.createTreeView(VIEW, { treeDataProvider: tree, showCollapseAll: true });
+  const tree = new CompassView((m) => {
+    switch (m.type) {
+      case "ready":
+      case "refresh":
+        update();
+        break;
+      case "details":
+        void vscode.commands.executeCommand(SHOW_DETAILS_COMMAND, m.id);
+        break;
+      case "copyId":
+        void vscode.commands.executeCommand(COPY_ID_COMMAND, m.id);
+        break;
+      case "dismiss": {
+        const row = tree.rows.find((x) => x.id === m.id);
+        if (row) {
+          saveDismissed(row.id, row.updatedAt, tree.rows.map((x) => x.id));
+          update();
+        }
+        break;
+      }
+      case "pane":
+        void vscode.commands.executeCommand(PANE_COMMAND, m.id);
+        break;
+      case "copyResume":
+        if (isOfferedByPlans(tree.plans, "resume", m.text)) void vscode.commands.executeCommand(COPY_RESUME_COMMAND, m.text);
+        break;
+      case "openWorktree":
+        if (isOfferedByPlans(tree.plans, "worktree", m.path)) void vscode.commands.executeCommand(OPEN_WORKTREE_COMMAND, m.path);
+        break;
+      case "openNote":
+        void vscode.commands.executeCommand("vscode.open", vscode.Uri.file(notePath()));
+        break;
+    }
+  });
+  const viewReg = vscode.window.registerWebviewViewProvider(VIEW, tree);
 
   const status = vscode.window.createStatusBarItem("sessionCompass.status", vscode.StatusBarAlignment.Left, 50);
   status.name = "Session Compass";
@@ -321,16 +264,17 @@ export function activate(context: vscode.ExtensionContext) {
     tree.rows = readRows();
     drawDetails();
     tree.note = readNote();
+    tree.dismissed = readDismissed();
     tree.plans = readPlans();
     const now = Date.now();
     // A Claude tab's label is the title the mod set, which its row records
     const tab = rowForTab(tree.rows, vscode.window.tabGroups.activeTabGroup.activeTab?.label ?? "", now);
     if (tab) tree.focusedId = tab.id;
-    const focused = visibleRows(tree.rows, now).find((r) => r.id === tree.focusedId);
+    const focused = visibleRows(tree.rows, now, tree.dismissed).find((r) => r.id === tree.focusedId);
     const shown = focused ?? rowForWorkspace(tree.rows, folders(), now);
     tree.fire();
-    const live = visibleRows(tree.rows, now).filter((r) => !isStale(r, now));
-    view.badge = live.length > 0 ? { value: live.length, tooltip: `${live.length} live sessions` } : undefined;
+    const live = visibleRows(tree.rows, now, tree.dismissed).filter((r) => !isStale(r, now));
+    if (tree.view) tree.view.badge = live.length > 0 ? { value: live.length, tooltip: `${live.length} live sessions` } : undefined;
     if (shown) {
       status.text = `$(compass) ${statusText(shown)}`;
       status.tooltip = tooltip(shown, now, focused ? "this tab" : "this window");
@@ -367,7 +311,7 @@ export function activate(context: vscode.ExtensionContext) {
   }, TICK_MS);
 
   context.subscriptions.push(
-    view,
+    viewReg,
     status,
     vscode.commands.registerCommand("sessionCompass.refresh", update),
     vscode.commands.registerCommand(SHOW_DETAILS_COMMAND, (arg?: unknown) => {

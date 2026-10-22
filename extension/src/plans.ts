@@ -156,6 +156,11 @@ export const resumeFromArg = (arg: unknown): string | undefined => {
 };
 
 /** The worktree path from a context-menu tree node. */
+/** True only when `value` is a worktree path or resume text the registry itself supplied, so the page cannot make the host open or copy anything else. */
+export const isOfferedByPlans = (plans: readonly ParentPlan[], kind: "worktree" | "resume", value: string) =>
+  value !== "" &&
+  plans.some((p) => openSlices(p).some((s) => (kind === "worktree" ? s.worktree === value : s.worktree === value || s.resume === value)));
+
 export const worktreeFromArg = (arg: unknown): string | undefined => {
   if (typeof arg === "string") return arg || undefined;
   const w = (arg as { slice?: { worktree?: unknown } } | null)?.slice?.worktree;

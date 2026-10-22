@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  COPY_ID_COMMAND, GONE_MS, PANE_COMMAND, paneLink, paneOpenOf, STALE_MS, bar, copyIdLink, sessionIdFromArg, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
+  COPY_ID_COMMAND, GONE_MS, PANE_COMMAND, PARKED_MS, ago, dismissedFrom, paneLink, paneOpenOf, STALE_MS, bar, copyIdLink, sessionIdFromArg, description, groupByRepo, isRow, noteLines, rowForTab, rowForWorkspace, statusText, stepsOf, visibleRows,
   type Row,
 } from "../src/rows.ts";
 
@@ -10,14 +10,41 @@ const row = (o: Partial<Row>): Row => ({
   id: "x", repo: "r", where: "", plan: "Plan", done: 0, total: 0, now: "", updatedAt: NOW, ...o,
 });
 
-test("visibleRows drops ended and day-old rows, keeps idle ones, newest first", () => {
+test("visibleRows drops ended and finished day-old rows, keeps idle and paused ones, newest first", () => {
   const rows = [
-    row({ id: "old", updatedAt: NOW - GONE_MS }),
+    row({ id: "old", total: 2, done: 2, updatedAt: NOW - GONE_MS }),
     row({ id: "ended", ended: true }),
     row({ id: "idle", updatedAt: NOW - STALE_MS }),
     row({ id: "live", updatedAt: NOW - 1000 }),
   ];
   assert.deepEqual(visibleRows(rows, NOW).map((r) => r.id), ["live", "idle"]);
+});
+
+test("visibleRows keeps an unfinished row until PARKED_MS, a finished one only until GONE_MS", () => {
+  const threeDays = NOW - 3 * GONE_MS;
+  assert.equal(visibleRows([row({ id: "p", total: 3, done: 1, updatedAt: threeDays })], NOW).length, 1);
+  assert.equal(visibleRows([row({ id: "p", total: 3, done: 1, updatedAt: NOW - PARKED_MS })], NOW).length, 0);
+  assert.equal(visibleRows([row({ id: "f", total: 3, done: 3, updatedAt: NOW - GONE_MS })], NOW).length, 0);
+});
+
+test("visibleRows drops a day-old row that has no steps, even though it is unfinished", () => {
+  assert.equal(visibleRows([row({ id: "n", total: 0, updatedAt: NOW - GONE_MS })], NOW).length, 0);
+});
+
+test("visibleRows hides a dismissed row until its updatedAt changes", () => {
+  const r = row({ id: "d", updatedAt: NOW - 1000 });
+  assert.equal(visibleRows([r], NOW, { d: r.updatedAt }).length, 0);
+  assert.equal(visibleRows([{ ...r, updatedAt: NOW - 500 }], NOW, { d: r.updatedAt }).length, 1);
+});
+
+test("dismissedFrom ignores junk and non-number entries", () => {
+  assert.deepEqual(dismissedFrom("not json"), {});
+  assert.deepEqual(dismissedFrom("[1,2]"), {});
+  assert.deepEqual(dismissedFrom('{"a":5,"b":"x"}'), { a: 5 });
+});
+
+test("ago gives days past 48 hours", () => {
+  assert.equal(ago(2 * 24 * 3600000), "2d");
 });
 
 test("visibleRows hides a session that never got a message or a plan", () => {

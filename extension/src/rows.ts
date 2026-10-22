@@ -22,8 +22,10 @@ export type Row = {
 };
 
 export const STALE_MS = 6 * 60 * 60 * 1000;
-/** Rows older than this are dropped from the view entirely. */
+/** A finished session older than this is dropped from the view. */
 export const GONE_MS = 24 * 60 * 60 * 1000;
+/** An unfinished session stays, shown as paused, for this long after its last update. */
+export const PARKED_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const isRow = (v: unknown): v is Row => {
   const r = v as Row;
@@ -32,14 +34,38 @@ export const isRow = (v: unknown): v is Row => {
 
 export const isStale = (r: Row, nowMs: number) => nowMs - r.updatedAt >= STALE_MS;
 
+export const isFinished = (r: Row) => r.total > 0 && r.done === r.total;
+
+/** Has a step list with work left. A session with no steps yet is never paused: it drops at GONE_MS like a finished one. */
+export const hasWorkLeft = (r: Row) => r.total > 0 && r.done < r.total;
+
+/** Hidden by hand: session id to the updatedAt it was hidden at, so a session that updates again comes back. */
+export type Dismissed = Record<string, number>;
+
+export const dismissedFrom = (text: string): Dismissed => {
+  try {
+    const v = JSON.parse(text) as unknown;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    return Object.fromEntries(Object.entries(v).filter(([, n]) => typeof n === "number"));
+  } catch {
+    return {};
+  }
+};
+
 /**
- * Live and recently idle rows, newest first. Dropped: ended, day-old, and sessions that never got a
- * message or a plan (the mod's plan falls back to the first message, so an empty plan with no steps
- * is a window that was opened and left).
+ * Live, paused and recently finished rows, newest first. Dropped: ended, hidden by hand, finished ones a
+ * day old, unfinished ones a week old, and sessions that never got a message or a plan (the mod's plan
+ * falls back to the first message, so an empty plan with no steps is a window that was opened and left).
  */
-export const visibleRows = (rows: readonly Row[], nowMs: number) =>
+export const visibleRows = (rows: readonly Row[], nowMs: number, dismissed: Dismissed = {}) =>
   rows
-    .filter((r) => !r.ended && nowMs - r.updatedAt < GONE_MS && (r.plan || r.total > 0))
+    .filter(
+      (r) =>
+        !r.ended &&
+        dismissed[r.id] !== r.updatedAt &&
+        nowMs - r.updatedAt < (hasWorkLeft(r) ? PARKED_MS : GONE_MS) &&
+        (r.plan || r.total > 0),
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
 export type Group = { repo: string; rows: Row[] };
@@ -60,7 +86,8 @@ export const ago = (ms: number) => {
   const m = Math.max(0, Math.round(ms / 60000));
   if (m < 1) return "now";
   if (m < 60) return `${m}m`;
-  return `${Math.round(m / 60)}h`;
+  if (m < 48 * 60) return `${Math.round(m / 60)}h`;
+  return `${Math.round(m / 1440)}d`;
 };
 
 export const bar = (done: number, total: number, width = 8) => {
