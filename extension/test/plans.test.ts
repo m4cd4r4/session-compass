@@ -9,13 +9,13 @@ const NOW = Date.parse("2026-10-16T01:00:00Z");
 const RECENT = "2026-10-15T11:29:11Z";
 const OLD = "2026-07-01T00:00:00Z";
 const e = (o: Partial<RegistryEntry>): RegistryEntry => ({
-  plan: "seal-rebrand", repo_path: "I:/Scratch/examworthy", status: "later", last_activity_at: RECENT, ...o,
+  plan: "seal-rebrand", repo_path: "C:/work/webapp", status: "later", last_activity_at: RECENT, ...o,
 });
-const onDisk = (p: string) => p === "I:/Scratch/examworthy-seal-landing";
+const onDisk = (p: string) => p === "C:/work/webapp-seal-landing";
 
 const seal = [
   e({ slug: "seal-flip", label: "S8", wave: 4, depends_on: ["seal-web"] }),
-  e({ slug: "seal-landing", label: "S2", wave: 1, status: "materialised", worktree_path: "I:/Scratch/examworthy-seal-landing" }),
+  e({ slug: "seal-landing", label: "S2", wave: 1, status: "materialised", worktree_path: "C:/work/webapp-seal-landing" }),
   e({ slug: "seal-web", label: "S3", wave: 1, gate_reason: "after rd-legacy-delete merges" }),
   e({ slug: "seal-tokens", label: "S0", wave: 0, status: "merged" }),
   e({ slug: "seal-assets", label: "S6", wave: 3, gate_reason: "after the shoot", gate_date: "2026-10-19" }),
@@ -26,7 +26,7 @@ const seal = [
 test("plansFromRegistry orders slices by wave and gives each its state", () => {
   const [p] = plansFromRegistry(seal, { now: NOW, exists: onDisk });
   assert.equal(p.name, "seal-rebrand");
-  assert.equal(p.repo, "examworthy");
+  assert.equal(p.repo, "webapp");
   assert.deepEqual(
     p.slices.map((s) => `${s.slug}:${s.state}`),
     ["seal-tokens:done", "seal-landing:working", "seal-web:held", "seal-sweep:due", "seal-today:ready", "seal-assets:held", "seal-flip:held"],
@@ -51,8 +51,8 @@ test("resume is the mint command for a later slice, the worktree path for a work
   const [p] = plansFromRegistry(seal, { now: NOW, exists: onDisk });
   const by = Object.fromEntries(p.slices.map((s) => [s.slug, s]));
   assert.equal(by["seal-web"].resume, "bash ~/.claude/scripts/wt-mint.sh seal-web --launch");
-  assert.equal(by["seal-landing"].resume, "I:/Scratch/examworthy-seal-landing");
-  assert.equal(by["seal-landing"].worktree, "I:/Scratch/examworthy-seal-landing");
+  assert.equal(by["seal-landing"].resume, "C:/work/webapp-seal-landing");
+  assert.equal(by["seal-landing"].worktree, "C:/work/webapp-seal-landing");
   assert.equal(by["seal-tokens"].resume, "");
 });
 
@@ -81,7 +81,7 @@ test("plansFromRegistry drops single-slice plans, finished plans and plans untou
     e({ plan: "solo", slug: "a" }),
     e({ plan: "finished", slug: "b", status: "merged" }), e({ plan: "finished", slug: "c", status: "archived" }),
     e({ plan: "abandoned", slug: "d", last_activity_at: OLD }), e({ plan: "abandoned", slug: "f", last_activity_at: OLD }),
-    e({ plan: "old-but-open", slug: "g", last_activity_at: OLD, status: "materialised", worktree_path: "I:/Scratch/examworthy-seal-landing" }),
+    e({ plan: "old-but-open", slug: "g", last_activity_at: OLD, status: "materialised", worktree_path: "C:/work/webapp-seal-landing" }),
     e({ plan: "old-but-open", slug: "h", last_activity_at: OLD }),
     { slug: "no-plan" }, e({ slug: undefined }),
   ];
@@ -107,10 +107,10 @@ test("slice label and description", () => {
 });
 
 test("plans attach to their repo group case-insensitively; repos with no session get their own group once", () => {
-  const plans = plansFromRegistry([...seal, e({ plan: "other", slug: "o1", repo_path: "I:/Scratch/Chlann" }), e({ plan: "other", slug: "o2" })], { now: NOW, exists: onDisk });
-  assert.deepEqual(plansForRepo(plans, "ExamWorthy").map((p) => p.name), ["seal-rebrand"]);
-  assert.deepEqual(planOnlyRepos(plans, ["examworthy"]), ["Chlann"]);
-  assert.deepEqual(planOnlyRepos(plans, ["chlann", "examworthy"]), []);
+  const plans = plansFromRegistry([...seal, e({ plan: "other", slug: "o1", repo_path: "C:/work/api" }), e({ plan: "other", slug: "o2" })], { now: NOW, exists: onDisk });
+  assert.deepEqual(plansForRepo(plans, "WebApp").map((p) => p.name), ["seal-rebrand"]);
+  assert.deepEqual(planOnlyRepos(plans, ["webapp"]), ["api"]);
+  assert.deepEqual(planOnlyRepos(plans, ["api", "webapp"]), []);
 });
 
 test("resumeFromArg and worktreeFromArg take a raw string or a tree node", () => {
@@ -126,10 +126,10 @@ test("resumeFromArg and worktreeFromArg take a raw string or a tree node", () =>
 test("isOfferedByPlans accepts only worktrees and resume text the registry supplied", () => {
   const plans = plansFromRegistry(seal, { now: NOW, exists: onDisk });
   assert.ok(plans.length > 0);
-  assert.equal(isOfferedByPlans(plans, "worktree", "I:/Scratch/examworthy-seal-landing"), true);
+  assert.equal(isOfferedByPlans(plans, "worktree", "C:/work/webapp-seal-landing"), true);
   assert.equal(isOfferedByPlans(plans, "worktree", "C:/Windows"), false);
   assert.equal(isOfferedByPlans(plans, "worktree", ""), false);
-  assert.equal(isOfferedByPlans(plans, "worktree", "I:/Scratch/examworthy-seal-landing/"), false);
-  assert.equal(isOfferedByPlans(plans, "resume", "I:/Scratch/examworthy-seal-landing"), true);
+  assert.equal(isOfferedByPlans(plans, "worktree", "C:/work/webapp-seal-landing/"), false);
+  assert.equal(isOfferedByPlans(plans, "resume", "C:/work/webapp-seal-landing"), true);
   assert.equal(isOfferedByPlans(plans, "resume", "rm -rf /"), false);
 });
