@@ -4,12 +4,22 @@ All notable changes to the Session Compass mod and VS Code extension. Format fol
 
 ## [Unreleased]
 
+## Mod 0.6.0 and extension 0.5.0 - 2026-10-23
+
 ### Added
+- The Sessions view is redrawn as cards: a summary strip of counts, All, Active and Held filters, sessions grouped by repo, a progress bar and the step in progress on each card (#28).
+- A session with plan steps left that has been quiet for 6 hours shows as paused (amber, with its age) and stays for 7 days. Finished sessions still drop after 24 hours (#28).
+- Hover a card and click x to hide it. It comes back if the session updates. Hidden sessions are kept in `~/.claude/session-compass/dismissed.json` (#28).
+- Blocked slices of a parent plan have their own red state, and a plan with only blocked slices reads as held (#28).
 - Hovering a session lists every step, and clicking a step shows its detail (#25).
 - The `compass` tool takes an optional `detail` per step: one or two plain sentences on what the step covers (#25).
 - The guide covers resumed sessions: after `/clear`, a handover or a restart note, the first tool call is `compass` (#25).
 
 ### Fixed
+- Keyboard focus stays on the same control when the view redraws, and Enter or Space on a card's own buttons runs the button (#28).
+- Open and closed steps stay with the step when a plan is reordered (#28).
+- The extension opens a worktree or copies resume text only when the registry offered it (#28).
+- The Compass pane opened by the poll is retried when the pane was waiting undrawn (#27).
 - The status bar and footer no longer guess between sessions that share a folder. A tab with no matching session now shows nothing instead of the newest session in that folder, so a click can no longer toggle another session's pane (#25).
 
 ## Mod 0.5.0 and extension 0.4.0 - 2026-10-18
