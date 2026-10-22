@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import { buildModel, parseMessage, type WebMessage } from "./model";
 import { pageHtml } from "./webview";
 import {
-  COPY_RESUME_COMMAND, DEFAULT_RESUME, OPEN_WORKTREE_COMMAND, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg,
+  COPY_RESUME_COMMAND, DEFAULT_RESUME, isOfferedByPlans, OPEN_WORKTREE_COMMAND, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg,
   sliceDescription, sliceLabel, worktreeFromArg, type ParentPlan, type RegistryEntry, type Slice, type SliceState,
 } from "./plans";
 import {
@@ -238,10 +238,10 @@ export function activate(context: vscode.ExtensionContext) {
         void vscode.commands.executeCommand(PANE_COMMAND, m.id);
         break;
       case "copyResume":
-        void vscode.commands.executeCommand(COPY_RESUME_COMMAND, m.text);
+        if (isOfferedByPlans(tree.plans, "resume", m.text)) void vscode.commands.executeCommand(COPY_RESUME_COMMAND, m.text);
         break;
       case "openWorktree":
-        void vscode.commands.executeCommand(OPEN_WORKTREE_COMMAND, m.path);
+        if (isOfferedByPlans(tree.plans, "worktree", m.path)) void vscode.commands.executeCommand(OPEN_WORKTREE_COMMAND, m.path);
         break;
       case "openNote":
         void vscode.commands.executeCommand("vscode.open", vscode.Uri.file(notePath()));

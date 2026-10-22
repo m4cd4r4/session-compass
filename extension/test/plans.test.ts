@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_RESUME, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg, sliceDescription, sliceLabel, worktreeFromArg,
+  DEFAULT_RESUME, isOfferedByPlans, openSlices, planOnlyRepos, plansForRepo, plansFromRegistry, planSummary, resumeFromArg, sliceDescription, sliceLabel, worktreeFromArg,
   type RegistryEntry,
 } from "../src/plans.ts";
 
@@ -121,4 +121,15 @@ test("resumeFromArg and worktreeFromArg take a raw string or a tree node", () =>
   assert.equal(resumeFromArg(null), undefined);
   assert.equal(worktreeFromArg({ kind: "slice", slice }), "I:/w");
   assert.equal(worktreeFromArg(""), undefined);
+});
+
+test("isOfferedByPlans accepts only worktrees and resume text the registry supplied", () => {
+  const plans = plansFromRegistry(seal, { now: NOW, exists: onDisk });
+  assert.ok(plans.length > 0);
+  assert.equal(isOfferedByPlans(plans, "worktree", "I:/Scratch/examworthy-seal-landing"), true);
+  assert.equal(isOfferedByPlans(plans, "worktree", "C:/Windows"), false);
+  assert.equal(isOfferedByPlans(plans, "worktree", ""), false);
+  assert.equal(isOfferedByPlans(plans, "worktree", "I:/Scratch/examworthy-seal-landing/"), false);
+  assert.equal(isOfferedByPlans(plans, "resume", "I:/Scratch/examworthy-seal-landing"), true);
+  assert.equal(isOfferedByPlans(plans, "resume", "rm -rf /"), false);
 });
