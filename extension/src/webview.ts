@@ -228,7 +228,8 @@ function render() {
     const open = !st.closed.has("g:" + g.repo);
     root.append(h("div", { class: "grp", tabindex: 0, role: "button", "aria-expanded": String(open), on: { click: () => toggle(st.closed, "g:" + g.repo) } },
       h("span", { class: "chev" }, icon("chev")), h("span", { class: "grow" }, g.repo), cards.length ? h("span", { class: "pill" }, cards.length) : h("span", { class: "chip" }, "no live session")));
-    if (open) for (const c of cards) { root.append(...card(c).filter(Boolean)); shown++; }
+    shown += cards.length;
+    if (open) for (const c of cards) root.append(...card(c).filter(Boolean));
   }
   if (shown === 0) root.append(h("div", { class: "empty" }, m.groups.length === 0 ? "No live Claude Code sessions recorded. A session appears here once it calls the compass tool (the session-compass mod adds it)." : "Nothing here right now."));
 }
