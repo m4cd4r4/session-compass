@@ -32,7 +32,7 @@ It is also on [Open VSX](https://open-vsx.org/extension/macdara/session-compass)
 
 1. The mod tells Claude to call `compass` when a task has 3 or more steps, when a step starts or finishes, and when the plan changes. A call carries a 3 to 6 word plan name and the whole step list, each step marked `done`, `now` or `todo`.
 2. Each call updates the tab title, the status line, and one JSON file per session in `~/.claude/session-compass/` (or `$CLAUDE_CONFIG_DIR/session-compass/`).
-3. The extension watches that folder and draws the tree. A finished session, or one with no plan steps yet, that goes quiet for 6 hours is marked idle and dropped after 24 hours. One with plan steps left that goes quiet for 6 hours shows as paused (amber, "paused 3d") and stays for 7 days. Hover a card and click x to hide it; it comes back if the session updates (hidden entries live in `~/.claude/session-compass/dismissed.json`). Ended sessions, and sessions that never got a message or a plan, are hidden.
+3. The extension watches that folder and shows each session as a card in the Sessions view. A finished session, or one with no plan steps yet, that goes quiet for 6 hours is marked idle and dropped after 24 hours. One with plan steps left that goes quiet for 6 hours shows as paused (amber, "paused 3d") and stays for 7 days. Hover a card and click x to hide it; it comes back if the session updates (hidden entries live in `~/.claude/session-compass/dismissed.json`). Ended sessions, and sessions that never got a message or a plan, are hidden.
 
 `/sessions` lists every live session in the terminal. `/compass` prints the plan, stage, done, now and todo of the current one.
 

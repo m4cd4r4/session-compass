@@ -136,8 +136,18 @@ function segments(c) {
   for (let i = 0; i < c.total; i++) bits.push(h("i", { class: i < c.done ? "on" : i >= c.total - c.held ? "hold" : "" }));
   return h("span", { class: "steps" }, bits);
 }
-function stepRow(c, s, i) {
-  const key = "s:" + c.id + "#" + i;
+// A step is keyed by its text (plus an occurrence count for repeats), so reordering or inserting steps keeps each one's open state.
+function stepKeys(c) {
+  const seen = {};
+  return c.steps.map((s) => { seen[s.text] = (seen[s.text] || 0) + 1; return "s:" + c.id + "#" + s.text + "#" + seen[s.text]; });
+}
+function pruneState(m) {
+  const live = new Set();
+  for (const g of m.groups) for (const c of g.cards) { live.add("c:" + c.id); for (const k of stepKeys(c)) live.add(k); }
+  const stale = (k) => (k.startsWith("c:") || k.startsWith("s:")) && !live.has(k);
+  for (const set of [st.seen, st.open]) for (const k of [...set]) if (stale(k)) set.delete(k);
+}
+function stepRow(c, s, key) {
   const open = st.seen.has(key) ? st.open.has(key) : !!(s.status === "now" && s.detail && c.kind === "session");
   const mark = s.status === "done" ? (() => { const w = h("span", { style: "color:var(--green)" }); w.append(icon("check")); return w; })()
     : s.status === "now" ? h("span", { class: "dot b live" })
@@ -171,7 +181,7 @@ function card(c) {
     h("span", { class: "acts" }, acts),
     h("span", { class: "meta" }, meta),
     !expanded && c.now ? h("span", { class: "nowline", title: c.now }, "\\u2192 " + c.now) : null);
-  return [head, expanded ? h("div", { class: "stepsx" }, c.steps.map((s, i) => stepRow(c, s, i))) : null];
+  return [head, expanded ? h("div", { class: "stepsx" }, stepKeys(c).map((key, i) => stepRow(c, c.steps[i], key))) : null];
 }
 const FOCUSABLE = "[tabindex],button";
 function sigOf(el) {
@@ -222,7 +232,7 @@ function render() {
   }
   if (shown === 0) root.append(h("div", { class: "empty" }, m.groups.length === 0 ? "No live Claude Code sessions recorded. A session appears here once it calls the compass tool (the session-compass mod adds it)." : "Nothing here right now."));
 }
-window.addEventListener("message", (e) => { if (e.data && e.data.type === "model") { st.model = e.data.model; draw(); } });
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "model") { st.model = e.data.model; pruneState(st.model); draw(); } });
 document.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".grp, .sec, .step")) { e.preventDefault(); e.target.click(); } });
 post({ type: "ready" });
 `;
