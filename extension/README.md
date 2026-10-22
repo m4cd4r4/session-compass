@@ -2,7 +2,7 @@
 
 A sidebar for the parallel Claude Code sessions you have running: which repo, which branch, what plan, which step.
 
-Click the compass icon in the Activity Bar to open **Sessions**. Sessions are grouped by repo. Each shows its plan, a progress bar, and the step it is on. The status bar shows the stage of the session in the active tab.
+Click the compass icon in the Activity Bar to open **Sessions**. Sessions are grouped by repo and shown as cards. Each shows its plan, a progress bar, and the step it is on, with a summary strip and All, Active and Held filters above them. The status bar shows the stage of the session in the active tab.
 
 ## Needs the mod
 
@@ -16,8 +16,9 @@ claude plugin install session-compass@session-compass
 ## Details
 
 - A session appears once Claude calls the `compass` tool, which the mod adds and asks Claude to use for tasks of 3 or more steps.
-- A session with no update for 6 hours is marked idle and dropped after 24 hours. Ended sessions, and sessions that never got a message or a plan, are hidden.
-- If `restart-note.md` exists in the same folder, it is shown at the top of the tree.
+- A finished session, or one with no plan steps yet, that goes quiet for 6 hours is marked idle and dropped after 24 hours. One with plan steps left that goes quiet shows as paused (amber) and stays for 7 days. Ended sessions, and sessions that never got a message or a plan, are hidden.
+- Hover a card and click x to hide it. It comes back if the session updates.
+- If `restart-note.md` exists in the same folder, it is shown at the top of the view.
 - The **Refresh** button re-reads the folder.
 - No network requests. The extension only reads local files.
 
