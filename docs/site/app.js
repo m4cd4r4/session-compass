@@ -88,7 +88,9 @@
     if (animateIn) { root.querySelectorAll(".card").forEach((el, i) => { el.style.animationDelay = (0.25 + i * 0.09) + "s"; }); animateIn = false; }
     else root.querySelectorAll(".card").forEach((el) => { el.style.animation = "none"; });
   }
-  function draw() { render(); }
+  // Step 2 shows one card's hover actions without a mouse; every redraw has to put the class back
+  function draw() { render(); if (document.body.dataset.step === "2" && hoverDemo) { const c = document.querySelectorAll("#root .card")[1]; if (c) c.classList.add("demo-hover"); } }
+  let hoverDemo = false;
 
   // ---- scripted fake data -------------------------------------------------
   const mk = (id, repo, title, where, state, age, texts, done, now, detail) => ({
@@ -112,116 +114,122 @@
   };
   const refresh = () => { st.model = viewModel(); draw(); syncChrome(); };
 
-  // ---- hero chrome --------------------------------------------------------
-  const body = document.body, win = document.getElementById("win");
+
+  // ---- window chrome ------------------------------------------------------
+  const win = document.getElementById("win"), body = document.body;
   const tabsEl = document.getElementById("tabs"), pane = document.getElementById("paneLines");
   const prompt = document.getElementById("prompt"), form = document.getElementById("promptForm");
   const stCompass = document.getElementById("stCompass"), stText = document.getElementById("stText");
-  const toggle = document.getElementById("toggle"), clock = document.getElementById("clock"), triesEl = document.getElementById("tries");
-  let on = false, tries = 0, sel = 0;
+  let sel = 0;
 
   const focused = () => sessions.find((c) => c.state === "here") || sessions[0];
   const nowOf = (c) => (c.steps.find((s) => s.status === "now") || {}).text || "";
-  const tabLabel = (c) => `${c.done}/${c.steps.length} ${c.title}`;
+  const STATE_DOT = { here: "#3794ff", run: "#73c991", held: "#cca700", done: "#73c991" };
 
   function drawTabs() {
     tabsEl.replaceChildren();
     sessions.forEach((c, i) => {
-      const t = h("button", { class: "win-tab", role: "tab", "aria-selected": String(i === sel), on: { click: () => onTab(i, t) } },
-        h("span", { class: "tdot", style: on ? "background:" + ({ here: "#3794ff", run: "#73c991", held: "#cca700", done: "#73c991" }[c.state]) : "" }),
-        h("span", { class: "tt" }, on ? tabLabel(c) : "claude"));
+      const t = h("button", { class: "win-tab", role: "tab", "aria-selected": String(i === sel), on: { click: () => { sel = i; typed = false; drawTabs(); drawPane(); } } },
+        h("span", { class: "tdot", style: "background:" + STATE_DOT[c.state] }),
+        h("span", { class: "tt" }, `${c.done}/${c.steps.length} ${c.title}`));
       tabsEl.append(t);
     });
   }
+  let typed = false; // step 3 prints /sessions into the pane; a tab click or a tick brings the plan back
   function drawPane() {
+    if (typed) return;
     pane.replaceChildren();
-    if (!on) { for (let i = 0; i < 9; i++) pane.append(h("i", { style: "width:" + (30 + ((i * 37) % 60)) + "%" })); return; }
     const c = sessions[sel];
     pane.append(h("p", {}, h("b", {}, c.title), "  ", c.where));
     c.steps.forEach((s) => pane.append(h("p", {}, (s.status === "done" ? "✓ " : s.status === "now" ? "● " : "○ ") + s.text)));
   }
-  function onTab(i, el) {
-    sel = i;
-    if (!on) {
-      tries++; triesEl.textContent = tries;
-      el.classList.add("bad"); win.classList.remove("shake"); void win.offsetWidth; win.classList.add("shake");
-      setTimeout(() => el.classList.remove("bad"), 450);
-    }
-    drawTabs(); drawPane();
+  function printSessions() {
+    pane.replaceChildren(h("p", { class: "dim" }, "> /sessions"));
+    sessions.forEach((c) => pane.append(h("p", {}, `${c.repo}  ${c.where}  ${c.done}/${c.steps.length}  ${nowOf(c) || (c.state === "done" ? "finished" : "paused")}`)));
+    typed = true;
   }
   function syncChrome() {
     const c = focused();
-    document.title = on ? `${c.done}/${c.steps.length} ${nowOf(c) || c.title} · Session Compass` : "Session Compass";
+    document.title = `${c.done}/${c.steps.length} ${nowOf(c) || c.title} · Session Compass`;
     stText.textContent = `${c.done}/${c.steps.length} ${nowOf(c) || c.title}`;
-    setFavicon(on ? (nowOf(c) ? "#4a9eed" : "#73c991") : "#ff8a3d");
+    setFavicon(nowOf(c) ? "#4a9eed" : "#73c991");
     drawTabs(); drawPane();
   }
   function setFavicon(dot) {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='#0f1524' stroke='#cfd9ff' stroke-width='1.6'/><path d='M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z' fill='#ff8a3d'/><circle cx='19' cy='5' r='4.2' fill='${dot}' stroke='#0f1524' stroke-width='1.4'/></svg>`;
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='#1a1a1a' stroke='#ececec' stroke-width='1.6'/><path d='M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z' fill='#F0B429'/><circle cx='19' cy='5' r='4.2' fill='${dot}' stroke='#1a1a1a' stroke-width='1.4'/></svg>`;
     document.getElementById("favicon").href = "data:image/svg+xml," + encodeURIComponent(svg);
   }
 
-  // The clock the lost visitor is watching
-  let secs = 2 * 60 + 58;
-  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
-  const clockTimer = setInterval(() => { if (on) return; secs++; clock.textContent = fmt(secs); }, 1000);
-
-  // ---- the toggle ---------------------------------------------------------
-  toggle.addEventListener("click", () => {
-    on = !on; body.dataset.compass = on ? "on" : "off";
-    toggle.setAttribute("aria-checked", String(on));
-    prompt.disabled = !on;
-    stCompass.hidden = !on;
-    if (on) { sel = sessions.indexOf(focused()); animateIn = true; clock.textContent = "03:00"; triesEl.textContent = ""; startTicks(); }
-    else { stopTicks(); sessions.forEach((c) => (c.userMade = c.userMade)); }
-    refresh();
-  });
-
   // ---- scripted ticks: running sessions advance a step now and then --------
-  let tickTimer = null, which = 0;
   const running = () => sessions.filter((c) => c.state === "run" || c.state === "here");
   function advance(c) {
     const i = c.steps.findIndex((s) => s.status === "now");
     if (i < 0) return;
     c.steps[i].status = "done"; c.steps[i].detail = undefined; c.done++;
     const next = c.steps[i + 1];
-    if (next) next.status = "now";
-    else { c.state = "done"; c.age = "now"; }
-    if (c.state !== "done") c.age = "now";
+    if (next) next.status = "now"; else c.state = "done";
+    c.age = "now";
   }
-  function startTicks() {
-    stopTicks();
-    tickTimer = setInterval(() => {
-      const r = running(); if (!r.length) return;
-      const c = r[which++ % r.length]; advance(c);
-      stCompass.classList.remove("tick"); void stCompass.offsetWidth; stCompass.classList.add("tick");
-      refresh();
-    }, 4200);
+  let which = 0;
+  setInterval(() => {
+    const r = running(); if (!r.length) return;
+    advance(r[which++ % r.length]);
+    stCompass.classList.remove("tick"); void stCompass.offsetWidth; stCompass.classList.add("tick");
+    typed = false; refresh();
+  }, 3600);
+
+  // ---- scroll steps: the window re-angles and a different part lights up ---
+  const stepEls = [...document.querySelectorAll(".lp-step")];
+  let demoTimer = null;
+  function setStep(n) {
+    if (body.dataset.step === String(n) && body.dataset.ready) return;
+    body.dataset.step = String(n); body.dataset.ready = "1";
+    stepEls.forEach((el) => el.setAttribute("aria-current", String(el.dataset.step === String(n))));
+    clearTimeout(demoTimer);
+    hoverDemo = false;
+    document.querySelectorAll(".card.demo-hover").forEach((el) => el.classList.remove("demo-hover"));
+    typed = false; drawPane();
+    if (n === 2) demoTimer = setTimeout(() => { hoverDemo = true; draw(); }, 900);
+    if (n === 3) demoTimer = setTimeout(printSessions, 900);
   }
-  function stopTicks() { clearInterval(tickTimer); tickTimer = null; }
+  const io = new IntersectionObserver((entries) => {
+    entries.filter((e) => e.isIntersecting).forEach((e) => setStep(Number(e.target.dataset.step)));
+  }, { rootMargin: "-45% 0px -45% 0px" });
+  stepEls.forEach((el) => io.observe(el));
+  setStep(1);
+
+  // ---- fit the 880px stage to its column ------------------------------------
+  const box = document.getElementById("stagebox");
+  const fit = () => box.style.setProperty("--fit", String(Math.min(1, box.clientWidth / 880)));
+  new ResizeObserver(fit).observe(box); fit();
+
+  // ---- theme toggle (same key and attribute as the main site) ---------------
+  const themeBtn = document.getElementById("theme");
+  const paintTheme = () => { themeBtn.textContent = document.documentElement.dataset.theme === "dark" ? "Light" : "Dark"; };
+  themeBtn.addEventListener("click", () => {
+    const dark = document.documentElement.dataset.theme !== "dark";
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+    paintTheme();
+  });
+  paintTheme();
 
   // ---- live session: type a task, a new card appears ----------------------
   let made = 0;
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const text = prompt.value.trim(); if (!text || !on) return;
+    const text = prompt.value.trim(); if (!text) return;
     prompt.value = "";
-    if (text === "/sessions") {
-      pane.replaceChildren();
-      sessions.forEach((c) => pane.append(h("p", {}, `${c.repo}  ${c.where}  ${c.done}/${c.steps.length}  ${nowOf(c) || (c.state === "done" ? "finished" : "paused")}`)));
-      return;
-    }
+    if (text === "/sessions") { printSessions(); return; }
     const words = text.replace(/^\/\w+\s*/, "").replace(/\s+/g, " ");
     const title = (words.length > 30 ? words.slice(0, 29).trimEnd() + "…" : words).replace(/^./, (ch) => ch.toUpperCase());
     const c = mk("n" + ++made, "playground", title, "feat/" + words.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 22), "run", "now",
       ["Read the code involved", "Make the change", "Run the tests", "Summarise the result"], 0, true, text);
-    sessions.push(c); sel = sessions.length - 1;
+    sessions.push(c); sel = sessions.length - 1; typed = false;
     refresh();
-    // The card ticks through its own plan while the visitor watches
-    let k = 0; const t = setInterval(() => { if (!on || c.state === "done") return clearInterval(t); advance(c); refresh(); if (++k > 5) clearInterval(t); }, 2600);
+    let k = 0; const t = setInterval(() => { if (c.state === "done" || ++k > 5) return clearInterval(t); advance(c); refresh(); }, 2600);
     document.getElementById("root").scrollTop = 1e6;
   });
 
   refresh();
-  drawPane();
 })();

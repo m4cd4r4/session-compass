@@ -6,18 +6,23 @@
 <title>Session Compass</title>
 <meta name="description" content="Six Claude Code sessions open. Which is which? Session Compass shows the repo, the branch, the plan and the step each session is on.">
 <link rel="icon" id="favicon" href="site/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
+<script>try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <link rel="stylesheet" href="site/replica.css">
 <link rel="stylesheet" href="site/page.css">
 </head>
-<body data-compass="off">
+<body data-step="1">
 
 <header class="lp-top">
   <a class="lp-brand" href="#top" aria-label="Session Compass">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z" fill="#ff8a3d" stroke="#ff8a3d"/></svg>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z" fill="#F0B429" stroke="#F0B429"/></svg>
     Session Compass
   </a>
   <nav class="lp-nav">
     <a href="https://github.com/m4cd4r4/session-compass">GitHub</a>
+    <button class="lp-theme" id="theme" type="button" aria-label="Switch between light and dark">Dark</button>
     <a class="lp-btn lp-btn-sm" href="#install">Install in VS Code</a>
   </nav>
 </header>
@@ -26,58 +31,63 @@
   <section class="lp-hero">
     <p class="lp-kicker">Six Claude Code sessions open.</p>
     <h1>Which is which?</h1>
+  </section>
 
-    <div class="lp-switchrow">
-      <button class="lp-switch" id="toggle" role="switch" aria-checked="false">
-        <span class="lp-knob" aria-hidden="true"></span>
-        <span>Turn on Compass</span>
-      </button>
+  <section class="lp-split" id="tour">
+    <div class="lp-steps">
+      <article class="lp-step" data-step="1">
+        <h2>Watch a plan run</h2>
+        <p>Claude writes a plan and ticks each step off. You see it without opening anything.</p>
+      </article>
+      <article class="lp-step" data-step="2">
+        <h2>Find any session</h2>
+        <p>Every live session in one sidebar, grouped by repo. Open one for its steps.</p>
+      </article>
+      <article class="lp-step" data-step="3">
+        <h2>Stay in the chat</h2>
+        <p>Don't want the sidebar? The plan opens beside the conversation, and /sessions lists everything.</p>
+      </article>
     </div>
 
-    <div class="lp-stage">
-      <svg class="lp-needle" id="needle" viewBox="0 0 120 120" aria-hidden="true">
-        <circle cx="60" cy="60" r="54" fill="#0f1524" stroke="#cfd9ff" stroke-width="3"/>
-        <g stroke="#cfd9ff" stroke-width="2.5" stroke-linecap="round"><path d="M60 10v9M60 101v9M10 60h9M101 60h9"/></g>
-        <g class="lp-needle-arm" id="needleArm"><path d="M60 22 70 60 60 66 50 60Z" fill="#ff8a3d"/><path d="M60 98 70 60 60 66 50 60Z" fill="#cfd9ff"/></g>
-        <circle cx="60" cy="60" r="4.5" fill="#0f1524" stroke="#cfd9ff" stroke-width="2"/>
-      </svg>
-
-      <!-- The window: chrome is the page's, the sidebar is the extension's own markup and CSS. -->
-      <div class="vsc win" id="win" aria-label="Replica of the VS Code window">
-        <div class="win-title">
-          <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="win-clock" id="clock" aria-hidden="true">02:58</span>
-          <span class="win-tries" id="tries" aria-hidden="true"></span>
-        </div>
-        <div class="win-body">
-          <div class="win-act" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 2.5h6l3 3v8H3zM9 2.5v3h3"/></svg>
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>
-            <svg class="win-act-compass" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z" fill="currentColor"/></svg>
-          </div>
-          <aside class="win-side" id="side" aria-label="Sessions">
-            <div class="win-side-head">Sessions</div>
-            <div class="win-skel" id="skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            <div id="root"></div>
-          </aside>
-          <section class="win-main">
-            <div class="win-tabs" id="tabs" role="tablist"></div>
-            <div class="win-pane" id="pane">
-              <div class="pane-lines" id="paneLines" aria-hidden="true"></div>
-              <form class="pane-prompt" id="promptForm" autocomplete="off">
-                <span class="pane-caret" aria-hidden="true">&gt;</span>
-                <input id="prompt" type="text" placeholder="Give Claude a task to start a session" aria-label="Give Claude a task to start a session" spellcheck="false" disabled>
-              </form>
+    <div class="lp-sticky">
+      <div class="lp-stagebox" id="stagebox">
+        <div class="lp-stage" id="stage">
+          <div class="vsc win" id="win" aria-label="Replica of the VS Code window">
+            <div class="win-title">
+              <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="win-name" aria-hidden="true">storefront</span>
+              <span class="win-dots-r"></span>
             </div>
-          </section>
-        </div>
-        <div class="win-status">
-          <span class="st-item"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="6.5" r="1.6"/><path d="M4 5.1v5.8M12 8.1c0 2.2-3 1.6-8 3"/></svg>feat/checkout</span>
-          <span class="st-grow"></span>
-          <span class="st-compass" id="stCompass" hidden>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z" fill="currentColor"/></svg>
-            <span id="stText"></span>
-          </span>
+            <div class="win-body">
+              <div class="win-act" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 2.5h6l3 3v8H3zM9 2.5v3h3"/></svg>
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>
+                <svg class="win-act-compass" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z" fill="currentColor"/></svg>
+              </div>
+              <aside class="win-side" id="side" aria-label="Sessions">
+                <div class="win-side-head">Sessions</div>
+                <div id="root"></div>
+              </aside>
+              <section class="win-main">
+                <div class="win-tabs" id="tabs" role="tablist"></div>
+                <div class="win-pane" id="pane">
+                  <div class="pane-lines" id="paneLines"></div>
+                  <form class="pane-prompt" id="promptForm" autocomplete="off">
+                    <span class="pane-caret" aria-hidden="true">&gt;</span>
+                    <input id="prompt" type="text" placeholder="Give Claude a task to start a session" aria-label="Give Claude a task to start a session" spellcheck="false">
+                  </form>
+                </div>
+              </section>
+            </div>
+            <div class="win-status">
+              <span class="st-item"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="6.5" r="1.6"/><path d="M4 5.1v5.8M12 8.1c0 2.2-3 1.6-8 3"/></svg>feat/checkout</span>
+              <span class="st-grow"></span>
+              <span class="st-compass" id="stCompass">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6Z" fill="currentColor"/></svg>
+                <span id="stText"></span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
