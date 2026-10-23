@@ -1,0 +1,84 @@
+/* Copied from the extension CSS in extension/src/webview.ts and scoped under .vsc so the replica cards match the real sidebar. */
+
+.vsc {
+  --ink: var(--vscode-foreground); --mute: var(--vscode-descriptionForeground); --faint: color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
+  --line: var(--vscode-widget-border, color-mix(in srgb, var(--vscode-foreground) 16%, transparent));
+  --surf: color-mix(in srgb, var(--vscode-foreground) 8%, transparent); --surf2: color-mix(in srgb, var(--vscode-foreground) 14%, transparent);
+  --hover: var(--vscode-list-hoverBackground); --sel: var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground));
+  --accent: #d1805f; --accent-bg: color-mix(in srgb, #d1805f 24%, transparent); --accent-ink: #d1805f;
+  --green: var(--vscode-testing-iconPassed, #4ec27a); --amber: var(--vscode-charts-yellow, #e0a243);
+  --red: var(--vscode-charts-red, #e5534b); --blue: var(--vscode-charts-blue, #4a9eed);
+  --green-bg: color-mix(in srgb, var(--green) 22%, transparent); --amber-bg: color-mix(in srgb, var(--amber) 22%, transparent);
+  --blue-bg: color-mix(in srgb, var(--blue) 22%, transparent);
+}
+
+.vsc *, .vsc *::before, .vsc *::after { box-sizing: border-box; }
+.vsc { font: 13px/1.4 var(--vscode-font-family); color: var(--ink); }
+.vsc button { font: inherit; color: inherit; }
+.vsc button:focus-visible, .card:focus-visible, .grp:focus-visible, .sec:focus-visible, .step:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+.vsc svg { display: block; }
+.grow { flex: 1; }
+.ib { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 5px; color: var(--mute); border: 0; background: none; cursor: pointer; padding: 0; }
+.ib:hover { background: var(--hover); color: var(--ink); }
+.chev { width: 16px; height: 16px; display: grid; place-items: center; transition: transform .15s; flex: none; }
+[aria-expanded="false"] > .chev { transform: rotate(-90deg); }
+.pill { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--surf2); color: var(--mute); }
+.pill.blue { background: var(--blue-bg); color: var(--blue); }
+.pill.warm { background: var(--accent-bg); color: var(--accent-ink); }
+.sec { display: flex; align-items: center; gap: 4px; padding: 10px 10px 6px 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); cursor: pointer; user-select: none; }
+.grp { display: flex; align-items: center; gap: 4px; padding: 7px 12px 3px; font-weight: 600; cursor: pointer; user-select: none; }
+.summary { margin: 8px 12px; padding: 10px 12px; background: var(--surf); border-radius: 10px; }
+.s-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.s-top b { font-size: 18px; font-weight: 600; }
+.stack { display: flex; height: 6px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surf2); }
+.stack i { display: block; height: 100%; }
+.legend { display: flex; gap: 12px; margin-top: 8px; color: var(--mute); font-size: 12px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; background: var(--surf); border-radius: 9px; padding: 3px; margin: 2px 12px 6px; }
+.seg button { border: 0; background: none; color: var(--mute); padding: 5px 0; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--vscode-sideBar-background); color: var(--ink); box-shadow: 0 0 0 1px var(--line) inset; }
+.card { position: relative; display: grid; grid-template-columns: 10px 1fr auto; gap: 3px 10px; align-items: center; padding: 8px 12px; margin: 1px 8px; border-radius: 9px; cursor: pointer; }
+.card:hover { background: var(--hover); }
+.card.sel { background: var(--sel); }
+.card .t { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card.sel .t { font-weight: 600; }
+.card .age { grid-column: 3; color: var(--mute); font-size: 12px; font-variant-numeric: tabular-nums; }
+.card .acts { grid-column: 3; grid-row: 1; display: none; gap: 2px; justify-self: end; }
+.card:hover .age, .card:focus-within .age { display: none; }
+.card:hover .acts, .card:focus-within .acts { display: flex; }
+.card .nowline { grid-column: 2 / 4; color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .meta { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; color: var(--mute); font-size: 12px; min-width: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.dot.g { background: var(--green); } .dot.a { background: var(--amber); } .dot.b { background: var(--blue); } .dot.r { background: var(--red); }
+.dot.live { animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+.steps { display: flex; gap: 3px; }
+.steps i { width: 16px; height: 4px; border-radius: 2px; background: var(--surf2); }
+.steps i.on { background: var(--accent); }
+.steps i.hold { background: var(--amber); }
+.chip { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--surf2); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cnt { white-space: nowrap; }
+.chip.amber, .chip.blue { flex: none; }
+.steps { flex: none; }
+.chip.amber { background: var(--amber-bg); color: var(--amber); }
+.chip.blue { background: var(--blue-bg); color: var(--blue); }
+.caret { display: inline-block; width: 10px; margin-right: 6px; color: var(--faint); transition: transform .15s; }
+.card[aria-expanded="true"] .caret { transform: rotate(90deg); }
+.stepsx { margin: 0 8px 4px 28px; padding-left: 10px; border-left: 1px solid var(--line); }
+.step { padding: 5px 8px; border-radius: 7px; }
+.step[data-d] { cursor: pointer; }
+.step:hover { background: var(--hover); }
+.s-row { display: flex; align-items: center; gap: 8px; }
+.s-ic { width: 14px; height: 14px; flex: none; display: grid; place-items: center; }
+.s-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step.done .s-t { color: var(--mute); text-decoration: line-through; text-decoration-color: var(--faint); }
+.step.now .s-t { font-weight: 600; }
+.s-more { color: var(--faint); font-size: 11px; }
+.step.open .s-more { color: var(--accent); }
+.detail { display: none; margin: 4px 0 2px 22px; padding: 7px 10px; background: var(--surf); border-radius: 7px; color: var(--mute); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.step.open .detail { display: block; }
+.note { display: flex; gap: 8px; align-items: baseline; padding: 3px 22px; color: var(--ink); cursor: pointer; }
+.note:hover { background: var(--hover); }
+.divider { height: 1px; background: var(--line); margin: 8px 0 2px; }
+.empty { padding: 14px 22px; color: var(--mute); }
