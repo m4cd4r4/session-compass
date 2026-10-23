@@ -34,9 +34,9 @@ A finished plan stays in the footer as 5/5.
 
 ![A finished plan stays in the footer as 5/5](docs/demo/finished-plan.png)
 
-## Three chats in the same repo?
+## Every session in a repo, together
 
-They sit together. Open the project to see each session's branch and which step it's on.
+Sessions in the same repo sit in one group. Open it to see each one's branch and which step it's on.
 
 ![The demo-shop group with three sessions](docs/demo/open-project-crop.png)
 
