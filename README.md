@@ -6,25 +6,25 @@ Session Compass tells you at a glance: the repo, the branch, the plan, and the s
 
 ![All your Claude sessions, grouped by project](docs/demo/sessions-by-project.png)
 
-## The step you're on, always in view
+## One glance, no scrolling
 
-Claude writes a plan, then ticks each step off as it works. The current step sits in your VS Code status bar.
+Look at the bottom of VS Code. It says 3/5 and what Claude is doing right now.
 
 ![Status bar showing 3/5 Add checkout flow](docs/demo/status-bar-crop.png)
 
 ![The current step shows in your status bar](docs/demo/status-bar.gif)
 
-## Switch tabs, the answer follows
+## Every tab knows its own plan
 
-Click another Claude tab and the status bar swaps to that session's plan.
+Click a different Claude tab and the bottom bar switches to that session's step. No hunting through chats.
 
 ![Three Claude tabs and the status bar below them](docs/demo/follows-tab-crop.png)
 
 ![The footer follows whichever tab you are in](docs/demo/follows-tab.gif)
 
-## Watch the plan tick off
+## Watch Claude tick things off
 
-Each session is a card. The bar fills as steps finish, and finished steps get struck through.
+Each session is a card with its plan. The bar fills and finished steps get crossed out as it works.
 
 ![One session card with all five steps ticked](docs/demo/plan-ticks-crop.png)
 
@@ -34,33 +34,33 @@ A finished plan stays in the footer as 5/5.
 
 ![A finished plan stays in the footer as 5/5](docs/demo/finished-plan.png)
 
-## One project, every session
+## Three chats in the same repo?
 
-Sessions group by repo. Open a project to see each session's branch and the step it's on.
+They sit together. Open the project to see each session's branch and which step it's on.
 
 ![The demo-shop group with three sessions](docs/demo/open-project-crop.png)
 
 ![Open a project to see every session's steps](docs/demo/open-project.gif)
 
-## The plan beside your chat
+## One click for the full plan
 
-Click the status bar item and the plan opens next to your conversation.
+Click the status bar item and every step opens right next to your chat.
 
 ![The status bar item you click](docs/demo/footer-pane-crop.png)
 
 ![Click the footer to open the plan beside your chat](docs/demo/footer-pane.gif)
 
-## Open any session
+## Everything about one session
 
-Open a card to see its steps, folder and ID.
+Open a card for its steps, its folder and its ID.
 
 ![A session's details: steps, folder and ID](docs/demo/session-details-crop.png)
 
 ![Open any session's details](docs/demo/session-details.gif)
 
-## Or just ask
+## Prefer typing?
 
-Type `/sessions` and every session is listed in the chat.
+`/sessions` lists every session right in the chat: branch, plan, step, how long ago.
 
 ![The /sessions list](docs/demo/sessions-command-crop.png)
 
