@@ -4,9 +4,9 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Compass, Step } from '../types'
 import {
   EMPTY, NOTE_FILE, PANE_POLL_MS, bar, claudeDir, detailText, noteContext, headingOf, newlyDone, paneOpenOf, restoreFrom, rowToWrite, sessionTitleOf, sessionsReport,
-  stage, statusText, stepsFromInput, tagOf, title, topicOf, whereFromGit, whereLabel,
+  stage, statusText, stepsFromInput, tagModeOf, tagOf, tagToShow, title, topicOf, whereFromGit, whereLabel,
 } from './lib'
-import type { Row } from './lib'
+import type { Row, TagMode } from './lib'
 
 const PLUGIN = 'session-compass'
 const PANE = 'compass'
@@ -31,6 +31,8 @@ async function git($: EngineInterface, args: string[]) {
 
 // The status_line option; register sets it on every load
 let showStatus = true
+// The session_tag option; register sets it on every load
+let tagMode: TagMode = 'clash'
 
 // Everything that writes state goes through here: title source, pane, status, shared file
 async function save($: EngineInterface, change: (c: Compass) => Compass) {
@@ -58,6 +60,19 @@ async function readRow($: EngineInterface): Promise<Row | undefined> {
   if (!dir) return undefined
   const text = await $.fs.read(`${dir}/session-compass/${await $.session.id()}.json`).catch(() => '')
   try { return JSON.parse(String(text ?? '')) as Row } catch { return undefined }
+}
+
+async function readRows($: EngineInterface): Promise<Row[]> {
+  const dir = await rowsDir($)
+  if (!dir) return []
+  const files = await $.fs.list(`${dir}/session-compass`).catch(() => [])
+  const rows: Row[] = []
+  for (const f of files) {
+    if (!f.name.endsWith('.json')) continue
+    const text = await $.fs.read(`${dir}/session-compass/${f.name}`).catch(() => '')
+    try { rows.push(JSON.parse(text as string)) } catch { /* half-written file */ }
+  }
+  return rows
 }
 
 async function writeRow($: EngineInterface, c: Compass, ended: boolean) {
@@ -116,6 +131,7 @@ let paneTick: { cancel: () => void } | undefined
 
 export const register: Register = (on, options) => {
   showStatus = options.status_line !== false
+  tagMode = tagModeOf(options.session_tag)
   on('session.start', async ($, e, next) => {
     await $.tool.register({
       name: 'compass',
@@ -178,7 +194,9 @@ export const register: Register = (on, options) => {
     let c = await refreshWhere($)
     if (topic && !c.topic) c = await save($, x => ({ ...x, topic }))
     const previous = c.shownTitle
-    const tag = tagOf(await $.session.id())
+    const id = await $.session.id()
+    const rows = tagMode === 'clash' ? await readRows($) : []
+    const tag = tagToShow(tagMode, tagOf(id), previous, c, rows, id, await $.clock.now())
     const shownTitle = title(c, 60, tag)
     const sessionTitle = sessionTitleOf(c, previous, tag)
     if (shownTitle !== previous) c = await save($, x => ({ ...x, shownTitle }))
@@ -215,16 +233,9 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'sessions' }, async $ => {
-    const dir = await rowsDir($)
     const self = await $.session.id()
     await writeRow($, await read($, compass), false)
-    const files = await $.fs.list(`${dir}/session-compass`).catch(() => [])
-    const rows: Row[] = []
-    for (const f of files) {
-      if (!f.name.endsWith('.json')) continue
-      const text = await $.fs.read(`${dir}/session-compass/${f.name}`).catch(() => '')
-      try { rows.push(JSON.parse(text as string)) } catch { /* half-written file */ }
-    }
+    const rows = await readRows($)
     return { text: sessionsReport(rows, self, await $.clock.now()) }
   })
 

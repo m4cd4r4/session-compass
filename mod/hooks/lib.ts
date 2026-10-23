@@ -46,6 +46,30 @@ export const sessionTitleOf = (c: Compass, previous: string | undefined, tag = '
 // First 6 characters of the session UUID: what the title, the row and who-owns can all show
 export const tagOf = (sessionId: string) => sessionId.replace(/-/g, '').slice(0, 6).toLowerCase()
 
+// session_tag option: 'clash' tags a title only when another live session already has it,
+// 'always' tags every title, 'never' tags none. Anything else reads as the default, 'clash'
+export type TagMode = 'clash' | 'always' | 'never'
+export const tagModeOf = (value: unknown): TagMode => (value === 'always' || value === 'never' ? value : 'clash')
+
+const CLASH_MS = 7 * 24 * 60 * 60 * 1000
+const bare = (text: string) => text.replace(/^\[[0-9a-f]{6}\] ?/, '').trim()
+
+// The tag this session's title carries, or '' for none. In 'clash' mode a tag is added only
+// when another live row already shows the same title, and a session that has the tag keeps it,
+// so a title never flaps. The footer matches tab labels to row titles; the tag is what keeps two
+// sessions with one title apart
+export const tagToShow = (
+  mode: TagMode, tag: string, previous: string | undefined, c: Compass, rows: readonly Row[], selfId: string, nowMs: number, max = 60,
+): string => {
+  if (!tag || mode === 'never') return ''
+  if (mode === 'always') return tag
+  if (previous?.startsWith(`[${tag}]`)) return tag
+  if (!c.plan && !c.topic) return ''
+  const mine = title(c, max)
+  const taken = rows.some(r => r.id !== selfId && !r.ended && nowMs - r.updatedAt < CLASH_MS && !!r.title && bare(r.title) === mine)
+  return taken ? tag : ''
+}
+
 export const detailText = (c: Compass) => {
   const { done, total, now } = stage(c.steps)
   const lines = [
