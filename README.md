@@ -1,17 +1,50 @@
-# Session Compass
+<div align="center">
 
-See where each of your parallel Claude Code sessions is: repo, branch, plan, and which step it is on.
+<img src="docs/img/banner.svg" alt="Session Compass. Six Claude Code sessions open. Which is which?" width="100%">
 
-Two parts, installed separately:
+<br>
 
-| Part | What it does | Where |
-|---|---|---|
-| **Mod** (Claude Code plugin) | Gives Claude a `compass` tool, sets the tab title, shows a status line, toasts each finished step, and adds `/sessions` and `/compass` | `mod/` |
-| **VS Code extension** | A sidebar of every live session as cards, grouped by repo, with a status bar that follows the active tab | `extension/` |
+🔧 **One is mid-refactor.**<br>
+⏳ **One is waiting on you.**<br>
+✅ **One finished twenty minutes ago.**
 
-The extension reads what the mod writes. The mod works without the extension; the extension shows nothing without the mod.
+<br>
+
+Session Compass tells you at a glance:
+
+### the repo · the branch · the plan · the step
+
+<sub>each session is on</sub>
+
+<br>
+
+</div>
+
+---
+
+![All your Claude sessions, grouped by project](docs/demo/sessions-by-project.png)
+
+## Watch a plan run
+
+Claude writes a plan and ticks each step off. You see it without opening anything.
+
+![Status bar step, tab switching and steps ticking off](docs/demo/plan-run.gif)
+
+## Find any session
+
+Every live session in one sidebar, grouped by repo. Open one for its steps.
+
+![Sessions grouped by repo, hover actions and session details](docs/demo/find-any-session.gif)
+
+## Stay in the chat
+
+Don't want the sidebar? The plan opens beside the conversation, and /sessions lists everything.
+
+![The plan beside the chat, and the /sessions command](docs/demo/stay-in-chat.gif)
 
 ## Install
+
+Compass is two parts. The **mod** (a Claude Code plugin, in `mod/`) gives Claude a `compass` tool, sets the tab title, shows a status line, toasts each finished step, and adds `/sessions` and `/compass`. The **VS Code extension** (in `extension/`) adds the sidebar and the status bar item. The mod works without the extension; the extension shows nothing without the mod.
 
 Mod (in your terminal):
 
@@ -27,6 +60,9 @@ code --install-extension macdara.session-compass
 ```
 
 It is also on [Open VSX](https://open-vsx.org/extension/macdara/session-compass) for VSCodium and Cursor.
+
+<details>
+<summary>How it works, in detail</summary>
 
 ## How it works
 
@@ -53,6 +89,8 @@ The sidebar uses your VS Code theme colours, so it follows dark, light and high 
 | Dark | Light | High contrast |
 |---|---|---|
 | ![Session Compass in a dark theme](docs/img/theme-dark.png) | ![Session Compass in a light theme](docs/img/theme-light.png) | ![Session Compass in a high contrast theme](docs/img/theme-high-contrast.png) |
+
+</details>
 
 ## What it reads and sends
 

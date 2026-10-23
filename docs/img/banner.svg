@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-label="Session Compass. Which is which?">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#161b2e"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#9db7ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#3b6cff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#3b6cff" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      text { font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif; }
+      .needle { transform-origin: 200px 180px; animation: swing 6s ease-in-out infinite; }
+      @keyframes swing {
+        0%   { transform: rotate(-70deg); }
+        18%  { transform: rotate(25deg); }
+        26%  { transform: rotate(8deg); }
+        34%  { transform: rotate(18deg); }
+        100% { transform: rotate(18deg); }
+      }
+      .ring { transform-origin: 200px 180px; animation: spin 40s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .pill { opacity: 0; animation: rise 0.6s ease-out forwards; }
+      .p1 { animation-delay: 0.6s; } .p2 { animation-delay: 1.0s; } .p3 { animation-delay: 1.4s; }
+      @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      .dot-run { animation: pulse 1.6s ease-in-out infinite; }
+      @keyframes pulse { 50% { opacity: 0.3; } }
+    </style>
+  </defs>
+
+  <rect width="1280" height="360" rx="20" fill="url(#bg)"/>
+  <circle cx="200" cy="180" r="170" fill="url(#glow)"/>
+
+  <!-- compass -->
+  <g class="ring" fill="none" stroke="#3b6cff" stroke-opacity="0.5" stroke-width="2">
+    <circle cx="200" cy="180" r="122" stroke-dasharray="3 12" stroke-linecap="round"/>
+  </g>
+  <circle cx="200" cy="180" r="100" fill="#10162a" stroke="#cfd9ff" stroke-width="4"/>
+  <g stroke="#cfd9ff" stroke-width="3" stroke-linecap="round">
+    <line x1="200" y1="92" x2="200" y2="106"/><line x1="200" y1="254" x2="200" y2="268"/>
+    <line x1="112" y1="180" x2="126" y2="180"/><line x1="274" y1="180" x2="288" y2="180"/>
+  </g>
+  <g class="needle">
+    <path d="M200 112 L218 180 L200 188 L182 180 Z" fill="#ff6a2b"/>
+    <path d="M200 248 L218 180 L200 188 L182 180 Z" fill="#cfd9ff"/>
+  </g>
+  <circle cx="200" cy="180" r="7" fill="#0d1117" stroke="#cfd9ff" stroke-width="3"/>
+
+  <!-- title -->
+  <text x="400" y="150" font-size="84" font-weight="800" fill="url(#title)" letter-spacing="-2">Session Compass</text>
+  <text x="404" y="204" font-size="30" font-weight="400" fill="#9aa4bf">Six Claude Code sessions open. Which is which?</text>
+
+  <!-- status pills -->
+  <g class="pill p1">
+    <rect x="404" y="244" width="250" height="52" rx="26" fill="#1c2540" stroke="#3b6cff" stroke-opacity="0.6"/>
+    <circle class="dot-run" cx="432" cy="270" r="7" fill="#4da3ff"/>
+    <text x="450" y="278" font-size="22" font-weight="600" fill="#e6ecff">mid-refactor</text>
+  </g>
+  <g class="pill p2">
+    <rect x="672" y="244" width="250" height="52" rx="26" fill="#2b2216" stroke="#ff9f2b" stroke-opacity="0.6"/>
+    <circle cx="700" cy="270" r="7" fill="#ff9f2b"/>
+    <text x="718" y="278" font-size="22" font-weight="600" fill="#ffe9cc">waiting on you</text>
+  </g>
+  <g class="pill p3">
+    <rect x="940" y="244" width="250" height="52" rx="26" fill="#14281f" stroke="#3ecf8e" stroke-opacity="0.6"/>
+    <circle cx="968" cy="270" r="7" fill="#3ecf8e"/>
+    <text x="986" y="278" font-size="22" font-weight="600" fill="#d6f7e8">finished</text>
+  </g>
+</svg>
