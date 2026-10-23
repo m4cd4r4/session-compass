@@ -6,65 +6,23 @@ Session Compass tells you at a glance: the repo, the branch, the plan, and the s
 
 ![All your Claude sessions, grouped by project](docs/demo/sessions-by-project.png)
 
-## One glance, no scrolling
+## Watch a plan run
 
-Look at the bottom of VS Code. It says 3/5 and what Claude is doing right now.
+Claude writes a plan and ticks each step off. You see it without opening anything.
 
-![Status bar showing 3/5 Add checkout flow](docs/demo/status-bar-crop.png)
+![Status bar step, tab switching and steps ticking off](docs/demo/plan-run.gif)
 
-![The current step shows in your status bar](docs/demo/status-bar.gif)
+## Find any session
 
-## Every tab knows its own plan
+Every live session in one sidebar, grouped by repo. Open one for its steps.
 
-Click a different Claude tab and the bottom bar switches to that session's step. No hunting through chats.
+![Sessions grouped by repo, hover actions and session details](docs/demo/find-any-session.gif)
 
-![Three Claude tabs and the status bar below them](docs/demo/follows-tab-crop.png)
+## Stay in the chat
 
-![The footer follows whichever tab you are in](docs/demo/follows-tab.gif)
+Don't want the sidebar? The plan opens beside the conversation, and /sessions lists everything.
 
-## Watch Claude tick things off
-
-Each session is a card with its plan. The bar fills and finished steps get crossed out as it works.
-
-![One session card with all five steps ticked](docs/demo/plan-ticks-crop.png)
-
-![Claude writes a plan, then ticks steps off as it goes](docs/demo/plan-ticks.gif)
-
-A finished plan stays in the footer as 5/5.
-
-![A finished plan stays in the footer as 5/5](docs/demo/finished-plan.png)
-
-## Every session in a repo, together
-
-Sessions in the same repo sit in one group. Open it to see each one's branch and which step it's on.
-
-![The demo-shop group with three sessions](docs/demo/open-project-crop.png)
-
-![Open a project to see every session's steps](docs/demo/open-project.gif)
-
-## One click for the full plan
-
-Click the status bar item and every step opens right next to your chat.
-
-![The status bar item you click](docs/demo/footer-pane-crop.png)
-
-![Click the footer to open the plan beside your chat](docs/demo/footer-pane.gif)
-
-## Everything about one session
-
-Open a card for its steps, its folder and its ID.
-
-![A session's details: steps, folder and ID](docs/demo/session-details-crop.png)
-
-![Open any session's details](docs/demo/session-details.gif)
-
-## Prefer typing?
-
-`/sessions` lists every session right in the chat: branch, plan, step, how long ago.
-
-![The /sessions list](docs/demo/sessions-command-crop.png)
-
-![The /sessions command lists every session in the chat](docs/demo/sessions-command.gif)
+![The plan beside the chat, and the /sessions command](docs/demo/stay-in-chat.gif)
 
 ## Install
 
@@ -84,6 +42,9 @@ code --install-extension macdara.session-compass
 ```
 
 It is also on [Open VSX](https://open-vsx.org/extension/macdara/session-compass) for VSCodium and Cursor.
+
+<details>
+<summary>How it works, in detail</summary>
 
 ## How it works
 
@@ -110,6 +71,8 @@ The sidebar uses your VS Code theme colours, so it follows dark, light and high 
 | Dark | Light | High contrast |
 |---|---|---|
 | ![Session Compass in a dark theme](docs/img/theme-dark.png) | ![Session Compass in a light theme](docs/img/theme-light.png) | ![Session Compass in a high contrast theme](docs/img/theme-high-contrast.png) |
+
+</details>
 
 ## What it reads and sends
 
