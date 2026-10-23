@@ -1,18 +1,12 @@
 <div align="center">
 
-# 🧭 Session Compass
+<img src="docs/img/banner.svg" alt="Session Compass. Six Claude Code sessions open. Which is which?" width="100%">
 
 <br>
-
-### Six Claude Code sessions open.
 
 🔧 **One is mid-refactor.**<br>
 ⏳ **One is waiting on you.**<br>
 ✅ **One finished twenty minutes ago.**
-
-<br>
-
-# Which is which?
 
 <br>
 
