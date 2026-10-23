@@ -36,6 +36,18 @@ It is also on [Open VSX](https://open-vsx.org/extension/macdara/session-compass)
 
 `/sessions` lists every live session in the terminal. `/compass` prints the plan, stage, done, now and todo of the current one.
 
+### Session IDs in tab titles
+
+Every Claude Code session has an ID. Compass uses the first six characters, like `e708ab`, to keep tabs and sessions matched.
+
+**Why it is there.** The footer finds your session by matching the tab's label to the title Compass saved for it. If two sessions share a title, the footer can show the wrong one's plan. A short ID in the title tells them apart. It also helps when you are chasing a runaway process and need to match a tab to a session ID.
+
+**When it shows.** By default, only on a clash: when another live session already has the same title, the later one is tagged, like `[e708ab] 3/5 Add checkout flow`. Otherwise titles are left alone. A session that has the tag keeps it.
+
+**The setting.** `session_tag` has three values: `clash` (default), `always` and `never`. With `never`, two sessions with the same title can share a footer.
+
+**Where else to find it.** The full ID is in a session's details tab, in the footer hover card, and behind the card's Copy button.
+
 ### Parent plans
 
 If a worktree registry exists (`workspaces/registry.json` in the same Claude folder, or the `sessionCompass.registryPath` setting), the sidebar shows each parent plan above the sessions of its repo: entries that share a `plan`, ordered by `wave`. A plan shows while it has two or more slices, at least one still open, and one touched in the last 14 days or with a worktree on disk. A repo with a plan but no live session gets a group of its own, so the plan stays reachable.

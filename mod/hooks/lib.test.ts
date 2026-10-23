@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EMPTY, stepsFromInput, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, paneOpenOf, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagOf, statusText, title, topicOf, whereFromGit } from './lib'
+import { EMPTY, stepsFromInput, noteContext, STALE_MS, claudeDir, claudeDirOf, headingOf, newlyDone, paneOpenOf, restoreFrom, rowOf, rowToWrite, sessionTitleOf, sessionsReport, tagModeOf, tagOf, tagToShow, statusText, title, topicOf, whereFromGit } from './lib'
 import type { Row } from './lib'
 
 const steps = [
@@ -44,6 +44,51 @@ test('sessionTitleOf and tagOf: a plan-less session gets the tag alone, once', (
   expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' }, '', '7b19a4')).toBe('[7b19a4]')
   expect(sessionTitleOf({ ...EMPTY, repo: 'myapp' }, '[7b19a4]', '7b19a4')).toBeUndefined()
   expect(sessionTitleOf({ ...EMPTY, repo: 'myapp', topic: 'Fix the pricing table on mobile' }, '[7b19a4]', '7b19a4')).toBe('[7b19a4] Fix the pricing table on mobile')
+})
+
+const NOW = 1_000_000_000_000
+const planned = { ...EMPTY, repo: 'myapp', plan: 'Pricing table fix', steps: [{ text: 'a', status: 'done' as const }, { text: 'b', status: 'now' as const }] }
+const rowWith = (id: string, rowTitle: string, extra = {}) =>
+  ({ id, repo: 'myapp', where: '', plan: '', done: 0, total: 0, now: '', updatedAt: NOW - 1000, title: rowTitle, ...extra }) as never
+
+test('tagModeOf: only always and never are read; anything else is clash', () => {
+  expect(tagModeOf('always')).toBe('always')
+  expect(tagModeOf('never')).toBe('never')
+  expect(tagModeOf('clash')).toBe('clash')
+  expect(tagModeOf(undefined)).toBe('clash')
+  expect(tagModeOf('ALWAYS')).toBe('clash')
+})
+
+test('tagToShow clash: no other session with the title means no tag', () => {
+  expect(tagToShow('clash', '7b19a4', undefined, planned, [], 'me', NOW)).toBe('')
+  expect(tagToShow('clash', '7b19a4', undefined, planned, [rowWith('other', '1/2 Another plan')], 'me', NOW)).toBe('')
+})
+
+test('tagToShow clash: another live session with the same title gets this one tagged', () => {
+  const rows = [rowWith('other', '1/2 Pricing table fix')]
+  expect(tagToShow('clash', '7b19a4', undefined, planned, rows, 'me', NOW)).toBe('7b19a4')
+  // the other session's title may already carry its own tag
+  expect(tagToShow('clash', '7b19a4', undefined, planned, [rowWith('other', '[aaaaaa] 1/2 Pricing table fix')], 'me', NOW)).toBe('7b19a4')
+})
+
+test('tagToShow clash: itself, ended and long-quiet rows are not a clash', () => {
+  expect(tagToShow('clash', '7b19a4', undefined, planned, [rowWith('me', '1/2 Pricing table fix')], 'me', NOW)).toBe('')
+  expect(tagToShow('clash', '7b19a4', undefined, planned, [rowWith('other', '1/2 Pricing table fix', { ended: true })], 'me', NOW)).toBe('')
+  expect(tagToShow('clash', '7b19a4', undefined, planned, [rowWith('other', '1/2 Pricing table fix', { updatedAt: NOW - 8 * 24 * 3600 * 1000 })], 'me', NOW)).toBe('')
+})
+
+test('tagToShow clash: a tagged title stays tagged once the other session is gone', () => {
+  expect(tagToShow('clash', '7b19a4', '[7b19a4] 1/2 Pricing table fix', planned, [], 'me', NOW)).toBe('7b19a4')
+})
+
+test('tagToShow clash: a session with no plan or first prompt is never tagged', () => {
+  expect(tagToShow('clash', '7b19a4', undefined, { ...EMPTY, repo: 'myapp' }, [rowWith('other', 'myapp')], 'me', NOW)).toBe('')
+})
+
+test('tagToShow always and never ignore the other rows', () => {
+  expect(tagToShow('always', '7b19a4', undefined, planned, [], 'me', NOW)).toBe('7b19a4')
+  expect(tagToShow('always', '', undefined, planned, [], 'me', NOW)).toBe('')
+  expect(tagToShow('never', '7b19a4', '[7b19a4] 1/2 Pricing table fix', planned, [rowWith('other', '1/2 Pricing table fix')], 'me', NOW)).toBe('')
 })
 
 test('topicOf: "go" is not a topic', () => {

@@ -12,6 +12,12 @@
       "title": "Status line",
       "description": "Show the stage and plan in the status line above the prompt. Off hides the line; the tab title, the pane and the VS Code status bar still show where the session is.",
       "default": true
+    },
+    "session_tag": {
+      "type": "string",
+      "title": "Session ID in the tab title",
+      "description": "clash (default): add a short session ID like [7b19a4] to a tab title only when another live session already has the same title. always: put it on every title. never: leave titles as they are. The footer matches tabs to sessions by title, so with never, two sessions with the same title can share a footer.",
+      "default": "clash"
     }
   }
 }

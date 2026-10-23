@@ -4,6 +4,9 @@ All notable changes to the Session Compass mod and VS Code extension. Format fol
 
 ## [Unreleased]
 
+### Changed
+- The session ID in the tab title now shows only when another live session has the same title. The new `session_tag` option sets it to `clash` (default), `always` (the old behaviour) or `never`.
+
 ## Mod 0.6.0 and extension 0.5.0 - 2026-10-23
 
 ### Added
