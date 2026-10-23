@@ -1,8 +1,32 @@
-# Session Compass
+<div align="center">
 
-Six Claude Code sessions open. One is mid-refactor, one is waiting on you, one finished twenty minutes ago. Which is which?
+# 🧭 Session Compass
 
-Session Compass tells you at a glance: the repo, the branch, the plan, and the step each session is on.
+<br>
+
+### Six Claude Code sessions open.
+
+🔧 **One is mid-refactor.**<br>
+⏳ **One is waiting on you.**<br>
+✅ **One finished twenty minutes ago.**
+
+<br>
+
+# Which is which?
+
+<br>
+
+Session Compass tells you at a glance:
+
+### the repo · the branch · the plan · the step
+
+<sub>each session is on</sub>
+
+<br>
+
+</div>
+
+---
 
 ![All your Claude sessions, grouped by project](docs/demo/sessions-by-project.png)
 
