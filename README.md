@@ -1,53 +1,74 @@
 # Session Compass
 
-See where each of your parallel Claude Code sessions is: repo, branch, plan, and which step it is on.
+Six Claude Code sessions open. One is mid-refactor, one is waiting on you, one finished twenty minutes ago. Which is which?
 
-Two parts, installed separately:
-
-| Part | What it does | Where |
-|---|---|---|
-| **Mod** (Claude Code plugin) | Gives Claude a `compass` tool, sets the tab title, shows a status line, toasts each finished step, and adds `/sessions` and `/compass` | `mod/` |
-| **VS Code extension** | A sidebar of every live session as cards, grouped by repo, with a status bar that follows the active tab | `extension/` |
-
-The extension reads what the mod writes. The mod works without the extension; the extension shows nothing without the mod.
-
-## What it looks like
-
-![The current step shows in your status bar](docs/demo/status-bar.gif)
-
-The current step shows in your status bar.
+Session Compass tells you at a glance: the repo, the branch, the plan, and the step each session is on.
 
 ![All your Claude sessions, grouped by project](docs/demo/sessions-by-project.png)
 
-All your Claude sessions, grouped by project.
+## The step you're on, always in view
+
+Claude writes a plan, then ticks each step off as it works. The current step sits in your VS Code status bar.
+
+![Status bar showing 3/5 Add checkout flow](docs/demo/status-bar-crop.png)
+
+![The current step shows in your status bar](docs/demo/status-bar.gif)
+
+## Switch tabs, the answer follows
+
+Click another Claude tab and the status bar swaps to that session's plan.
+
+![Three Claude tabs and the status bar below them](docs/demo/follows-tab-crop.png)
 
 ![The footer follows whichever tab you are in](docs/demo/follows-tab.gif)
 
-The footer shows the plan for whichever tab you're in.
+## Watch the plan tick off
+
+Each session is a card. The bar fills as steps finish, and finished steps get struck through.
+
+![One session card with all five steps ticked](docs/demo/plan-ticks-crop.png)
 
 ![Claude writes a plan, then ticks steps off as it goes](docs/demo/plan-ticks.gif)
 
-Claude writes a plan, then ticks steps off as it goes.
-
-![Open a project to see every session's steps](docs/demo/open-project.gif)
-
-Open a project to see every session's steps.
-
-![Click the footer to open the plan beside your chat](docs/demo/footer-pane.gif)
-
-Click the footer to open the plan beside your chat.
-
-![Open any session's details](docs/demo/session-details.gif)
-
-Open any session's details: its steps, folder and ID.
+A finished plan stays in the footer as 5/5.
 
 ![A finished plan stays in the footer as 5/5](docs/demo/finished-plan.png)
 
+## One project, every session
+
+Sessions group by repo. Open a project to see each session's branch and the step it's on.
+
+![The demo-shop group with three sessions](docs/demo/open-project-crop.png)
+
+![Open a project to see every session's steps](docs/demo/open-project.gif)
+
+## The plan beside your chat
+
+Click the status bar item and the plan opens next to your conversation.
+
+![The status bar item you click](docs/demo/footer-pane-crop.png)
+
+![Click the footer to open the plan beside your chat](docs/demo/footer-pane.gif)
+
+## Open any session
+
+Open a card to see its steps, folder and ID.
+
+![A session's details: steps, folder and ID](docs/demo/session-details-crop.png)
+
+![Open any session's details](docs/demo/session-details.gif)
+
+## Or just ask
+
+Type `/sessions` and every session is listed in the chat.
+
+![The /sessions list](docs/demo/sessions-command-crop.png)
+
 ![The /sessions command lists every session in the chat](docs/demo/sessions-command.gif)
 
-Type `/sessions` to list every session in the chat.
-
 ## Install
+
+Compass is two parts. The **mod** (a Claude Code plugin, in `mod/`) gives Claude a `compass` tool, sets the tab title, shows a status line, toasts each finished step, and adds `/sessions` and `/compass`. The **VS Code extension** (in `extension/`) adds the sidebar and the status bar item. The mod works without the extension; the extension shows nothing without the mod.
 
 Mod (in your terminal):
 
