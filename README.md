@@ -11,6 +11,42 @@ Two parts, installed separately:
 
 The extension reads what the mod writes. The mod works without the extension; the extension shows nothing without the mod.
 
+## What it looks like
+
+![The current step shows in your status bar](docs/demo/status-bar.gif)
+
+The current step shows in your status bar.
+
+![All your Claude sessions, grouped by project](docs/demo/sessions-by-project.png)
+
+All your Claude sessions, grouped by project.
+
+![The footer follows whichever tab you are in](docs/demo/follows-tab.gif)
+
+The footer shows the plan for whichever tab you're in.
+
+![Claude writes a plan, then ticks steps off as it goes](docs/demo/plan-ticks.gif)
+
+Claude writes a plan, then ticks steps off as it goes.
+
+![Open a project to see every session's steps](docs/demo/open-project.gif)
+
+Open a project to see every session's steps.
+
+![Click the footer to open the plan beside your chat](docs/demo/footer-pane.gif)
+
+Click the footer to open the plan beside your chat.
+
+![Open any session's details](docs/demo/session-details.gif)
+
+Open any session's details: its steps, folder and ID.
+
+![A finished plan stays in the footer as 5/5](docs/demo/finished-plan.png)
+
+![The /sessions command lists every session in the chat](docs/demo/sessions-command.gif)
+
+Type `/sessions` to list every session in the chat.
+
 ## Install
 
 Mod (in your terminal):
